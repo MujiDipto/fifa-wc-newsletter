@@ -15,10 +15,10 @@ import java.util.List;
 
 /**
  * Client for ESPN's unofficial public API. No key or signup required.
- * Covers WC rosters, top scorers, and per-match player performance (lineups).
+ * Used specifically to enrich player records with per-match performance
+ * (goals, assists, last-match summary) after matches have finished.
  *
- * League slug for FIFA World Cup 2026: fifa.world
- * Base: https://site.api.espn.com/apis/site/v2/sports/soccer/
+ * Base: https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world
  */
 public class EspnClient implements DataSource {
 
@@ -40,64 +40,8 @@ public class EspnClient implements DataSource {
     }
 
     /**
-     * Fetches the current top scorers / leaders for the WC.
-     * ESPN leaders endpoint returns goal, assist, and appearance counts.
-     */
-    public List<Player> fetchTopScorers() throws Exception {
-        String url = BASE + "/leaders";
-        JsonNode root = get(url);
-
-        List<Player> players = new ArrayList<>();
-
-        // ESPN leaders groups stats by category; find "goals" category
-        for (JsonNode category : root.path("leaders")) {
-            String catName = category.path("name").asText("");
-            if (!catName.equalsIgnoreCase("goals") && !catName.equalsIgnoreCase("score")) continue;
-
-            for (JsonNode leader : category.path("leaders")) {
-                JsonNode athlete = leader.path("athlete");
-                String name = athlete.path("displayName").asText();
-                String team = athlete.path("team").path("displayName").asText();
-                int goals = (int) leader.path("value").asDouble(0);
-                players.add(new Player(name, team, goals, 0, 0, null));
-            }
-        }
-
-        log.info("Fetched {} top scorer(s) from ESPN", players.size());
-        return players;
-    }
-
-    /**
-     * Fetches per-player stats from a match summary (lineup + performance).
-     * eventId is ESPN's event ID, mapped from the scoreboard response.
-     */
-    public List<Player> fetchMatchPlayers(String eventId) throws Exception {
-        String url = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=" + eventId;
-        JsonNode root = get(url);
-
-        List<Player> players = new ArrayList<>();
-        for (JsonNode boxscore : root.path("boxscore").path("players")) {
-            String teamName = boxscore.path("team").path("displayName").asText();
-            for (JsonNode playerEntry : boxscore.path("statistics").path(0).path("athletes")) {
-                JsonNode athlete = playerEntry.path("athlete");
-                String name = athlete.path("displayName").asText();
-                if (name.isBlank()) continue;
-
-                int goals = statInt(playerEntry, "goals");
-                int assists = statInt(playerEntry, "goalAssists");
-                String summary = buildSummary(playerEntry);
-
-                players.add(new Player(name, teamName, goals, assists, 1, summary));
-            }
-        }
-
-        log.info("Fetched {} player record(s) for ESPN event {}", players.size(), eventId);
-        return players;
-    }
-
-    /**
-     * Fetches today's scoreboard to get ESPN event IDs for finished matches.
-     * These IDs can be used with fetchMatchPlayers().
+     * Returns ESPN event IDs for matches that finished today.
+     * These are used to fetch per-player stats via fetchMatchPlayers().
      */
     public List<String> fetchFinishedEventIds() throws Exception {
         String url = BASE + "/scoreboard";
@@ -110,26 +54,45 @@ public class EspnClient implements DataSource {
                 ids.add(event.path("id").asText());
             }
         }
-        log.info("Found {} finished event(s) on today's scoreboard", ids.size());
+        log.info("Found {} finished event(s) on ESPN scoreboard", ids.size());
         return ids;
     }
 
-    private int statInt(JsonNode playerEntry, String statName) {
-        for (JsonNode stat : playerEntry.path("stats")) {
-            // ESPN stats are positional arrays; we match by the "names" array on the parent
-            // Fallback: try direct field name
-        }
-        // Try direct path for common mappings
-        JsonNode val = playerEntry.path(statName);
-        return val.isMissingNode() ? 0 : val.asInt(0);
-    }
+    /**
+     * Fetches per-player stats from a finished match summary.
+     * Returns an empty list (not an error) if the match hasn't finished yet.
+     */
+    public List<Player> fetchMatchPlayers(String eventId) throws Exception {
+        String url = BASE + "/summary?event=" + eventId;
+        JsonNode root = get(url);
 
-    private String buildSummary(JsonNode playerEntry) {
-        // Build a readable summary from whatever stat fields are present
-        int goals = statInt(playerEntry, "goals");
-        int assists = statInt(playerEntry, "goalAssists");
-        int shots = statInt(playerEntry, "shots");
-        return String.format("%d goal(s), %d assist(s), %d shot(s)", goals, assists, shots);
+        List<Player> players = new ArrayList<>();
+        for (JsonNode section : root.path("boxscore").path("players")) {
+            String teamName = section.path("team").path("displayName").asText();
+            JsonNode statsSection = section.path("statistics").path(0);
+            JsonNode names = statsSection.path("names");
+
+            for (JsonNode playerEntry : statsSection.path("athletes")) {
+                JsonNode athlete = playerEntry.path("athlete");
+                String name = athlete.path("displayName").asText();
+                if (name.isBlank()) continue;
+
+                // Stats are a positional array aligned to the "names" array
+                int goals = 0, assists = 0;
+                JsonNode stats = playerEntry.path("stats");
+                for (int i = 0; i < names.size(); i++) {
+                    String statName = names.path(i).asText();
+                    int val = stats.path(i).asInt(0);
+                    if ("G".equalsIgnoreCase(statName) || "goals".equalsIgnoreCase(statName)) goals = val;
+                    if ("A".equalsIgnoreCase(statName) || "assists".equalsIgnoreCase(statName)) assists = val;
+                }
+
+                String summary = goals + " goal(s), " + assists + " assist(s)";
+                players.add(new Player(name, teamName, goals, assists, 1, summary));
+            }
+        }
+        log.info("Fetched {} player record(s) for ESPN event {}", players.size(), eventId);
+        return players;
     }
 
     private JsonNode get(String url) throws Exception {
