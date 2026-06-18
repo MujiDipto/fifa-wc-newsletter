@@ -106,7 +106,7 @@ public class FootballDataClient implements DataSource {
                     s.path("goals").asInt(0),
                     s.path("assists").asInt(0),
                     s.path("playedMatches").asInt(0),
-                    null
+                    null, null, null, null
             ));
         }
         log.info("Fetched {} scorers", players.size());

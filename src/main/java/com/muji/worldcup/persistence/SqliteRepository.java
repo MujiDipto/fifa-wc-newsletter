@@ -200,7 +200,7 @@ public class SqliteRepository {
                 ps.setInt(4, p.assists());
                 ps.setInt(5, p.appearances());
                 ps.setString(6, p.lastMatchSummary());
-                ps.setString(7, "football-data.org");
+                ps.setString(7, p.bio() != null ? "thesportsdb" : "football-data.org");
                 ps.setString(8, now);
                 ps.addBatch();
             }
@@ -289,13 +289,17 @@ public class SqliteRepository {
 
     public Player findPlayer(String name) throws SQLException {
         String sql = """
-            SELECT name, team, goals, assists, appearances, last_match_summary
+            SELECT name, team, goals, assists, appearances, last_match_summary,
+                   position, nationality, bio
             FROM players
-            WHERE name = ?
+            WHERE LOWER(name) = LOWER(?)
+               OR LOWER(name) LIKE LOWER('%' || ? || '%')
+            ORDER BY goals DESC
             LIMIT 1
             """;
         try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, name);
+            ps.setString(2, name);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return new Player(
@@ -304,7 +308,10 @@ public class SqliteRepository {
                             rs.getInt("goals"),
                             rs.getInt("assists"),
                             rs.getInt("appearances"),
-                            rs.getString("last_match_summary")
+                            rs.getString("last_match_summary"),
+                            rs.getString("position"),
+                            rs.getString("nationality"),
+                            rs.getString("bio")
                     );
                 }
             }

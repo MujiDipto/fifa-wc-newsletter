@@ -6,5 +6,8 @@ public record Player(
         int goals,
         int assists,
         int appearances,
-        String lastMatchSummary
+        String lastMatchSummary,
+        String position,
+        String nationality,
+        String bio
 ) {}

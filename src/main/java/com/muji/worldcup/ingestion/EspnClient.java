@@ -90,7 +90,7 @@ public class EspnClient implements DataSource {
                 }
 
                 String summary = goals + " goal(s), " + assists + " assist(s)";
-                players.add(new Player(name, teamName, goals, assists, 1, summary));
+                players.add(new Player(name, teamName, goals, assists, 1, summary, null, null, null));
             }
         }
         log.info("Fetched {} player record(s) for ESPN event {}", players.size(), eventId);
