@@ -84,7 +84,8 @@ def parse_response(text: str) -> dict:
     buffer = []
 
     for line in text.strip().splitlines():
-        stripped = line.strip()
+        # Strip markdown heading prefixes Llama sometimes adds (e.g. "## SUBJECT:")
+        stripped = line.strip().lstrip('#').strip()
         matched = False
         for marker, key in markers.items():
             if stripped.startswith(marker):

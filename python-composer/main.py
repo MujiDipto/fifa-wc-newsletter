@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("Python composer starting — model: gemini-2.5-flash")
+    log.info("Python composer starting — model: llama-3.3-70b-versatile (Groq)")
     yield
     log.info("Python composer shutting down")
 

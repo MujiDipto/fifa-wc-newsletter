@@ -31,8 +31,8 @@ public class PythonComposerClient {
     private final HttpClient http;
     private final ObjectMapper mapper;
     private final RetryWithBackoff retry;
-    // Gemini free tier: 15 RPM, but keep conservative to avoid bursts
-    private final RateLimiter rateLimiter = new RateLimiter("gemini", 6, 60_000);
+    // Groq free tier: 30 RPM — stay safely under
+    private final RateLimiter rateLimiter = new RateLimiter("groq", 25, 60_000);
 
     public PythonComposerClient(String baseUrl) {
         this.baseUrl = baseUrl;

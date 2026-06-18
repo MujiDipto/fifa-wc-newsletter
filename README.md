@@ -67,7 +67,7 @@ Fill in `.env` with your credentials:
 
 ```env
 FOOTBALL_DATA_API_TOKEN=   # free at football-data.org
-GEMINI_API_KEY=            # free at aistudio.google.com
+GROQ_API_KEY=              # free at console.groq.com
 SMTP_HOST=
 SMTP_PORT=
 SMTP_USERNAME=
@@ -99,7 +99,7 @@ Schedule it daily and you're done.
 | Layer | Technology |
 |---|---|
 | Pipeline | Java 21, Maven |
-| AI composition | Python 3.11, FastAPI, Gemini 2.5 Flash |
+| AI composition | Python 3.11, FastAPI, Llama 3.3 70B via Groq |
 | Data | football-data.org, ESPN, TheSportsDB |
 | Storage | SQLite |
 | Email | Jakarta Mail |
