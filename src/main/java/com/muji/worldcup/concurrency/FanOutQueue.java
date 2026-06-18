@@ -6,17 +6,14 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * Hand-rolled fan-out queue. Distributes a list of inputs across the worker pool
- * concurrently, collects successful results, and records failed inputs in a
- * dead-letter list rather than propagating exceptions to the caller.
- *
- * Used in Phase 4 for concurrent email delivery; built here for Phase 2 to fan
- * out ContextBundle assembly across all subscribers.
+ * Fans a list of inputs out across a {@link BoundedWorkerPool} concurrently using
+ * {@link CompletableFuture}. Successful results are collected; failed inputs are
+ * recorded in a dead-letter list rather than propagating exceptions to the caller.
  */
 public class FanOutQueue<T, R> {
 
@@ -29,40 +26,26 @@ public class FanOutQueue<T, R> {
         this.pool = pool;
     }
 
-    /**
-     * Fans out {@code processor} over all {@code inputs} concurrently.
-     * Returns the list of successful results. Failed inputs are recorded in
-     * {@link #deadLetters()} and logged as warnings.
-     */
     public List<R> process(List<T> inputs, Function<T, R> processor) {
-        List<Future<R>> futures = new ArrayList<>(inputs.size());
+        List<CompletableFuture<R>> futures = inputs.stream()
+                .map(input -> CompletableFuture
+                        .supplyAsync(() -> processor.apply(input), pool.executor())
+                        .exceptionally(ex -> {
+                            log.warn("FanOutQueue: processing failed for {}: {}", input, ex.getMessage());
+                            deadLetters.add(input);
+                            return null;
+                        }))
+                .toList();
 
-        for (T input : inputs) {
-            futures.add(pool.submit(() -> {
-                try {
-                    return processor.apply(input);
-                } catch (Exception e) {
-                    log.warn("FanOutQueue: processing failed for {}: {}", input, e.getMessage());
-                    deadLetters.add(input);
-                    return null;
-                }
-            }));
-        }
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
-        List<R> results = new ArrayList<>(inputs.size());
-        for (int i = 0; i < futures.size(); i++) {
-            try {
-                R result = futures.get(i).get(30, TimeUnit.SECONDS);
-                if (result != null) results.add(result);
-            } catch (Exception e) {
-                T input = inputs.get(i);
-                log.warn("FanOutQueue: future failed for {}: {}", input, e.getMessage());
-                deadLetters.add(input);
-            }
-        }
+        List<R> results = futures.stream()
+                .map(f -> f.getNow(null))
+                .filter(Objects::nonNull)
+                .toList();
 
         if (!deadLetters.isEmpty()) {
-            log.error("FanOutQueue: {} item(s) landed in dead-letter list: {}", deadLetters.size(), deadLetters);
+            log.error("FanOutQueue: {} item(s) in dead-letter list: {}", deadLetters.size(), deadLetters);
         }
 
         return results;

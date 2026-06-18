@@ -4,67 +4,47 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Hand-rolled bounded worker pool: fixed worker threads drain a capacity-capped
- * blocking queue. No library thread pools — the explicit implementation is the point.
+ * Fixed-size thread pool with a bounded task queue. Backed by {@link ThreadPoolExecutor}.
+ * Submissions block when the queue is full (CallerRunsPolicy would change throughput
+ * characteristics, so we keep a blocking put via LinkedBlockingQueue).
  */
 public class BoundedWorkerPool {
 
     private static final Logger log = LoggerFactory.getLogger(BoundedWorkerPool.class);
 
-    private final BlockingQueue<FutureTask<?>> taskQueue;
-    private final Thread[] workers;
-    private volatile boolean shutdown = false;
+    private final ThreadPoolExecutor executor;
 
     public BoundedWorkerPool(int poolSize, int queueCapacity) {
-        this.taskQueue = new LinkedBlockingQueue<>(queueCapacity);
-        this.workers = new Thread[poolSize];
-        for (int i = 0; i < poolSize; i++) {
-            workers[i] = new Thread(this::workerLoop, "wcp-worker-" + i);
-            workers[i].setDaemon(true);
-            workers[i].start();
-        }
+        AtomicInteger count = new AtomicInteger();
+        this.executor = new ThreadPoolExecutor(
+                poolSize, poolSize,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(queueCapacity),
+                r -> {
+                    Thread t = new Thread(r, "wcp-worker-" + count.getAndIncrement());
+                    t.setDaemon(true);
+                    return t;
+                });
         log.debug("BoundedWorkerPool started: {} workers, queue capacity {}", poolSize, queueCapacity);
     }
 
-    private void workerLoop() {
-        while (!shutdown || !taskQueue.isEmpty()) {
-            try {
-                FutureTask<?> task = taskQueue.poll(200, TimeUnit.MILLISECONDS);
-                if (task != null) {
-                    task.run();
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
-        log.debug("{} exiting", Thread.currentThread().getName());
+    public <T> Future<T> submit(Callable<T> callable) {
+        return executor.submit(callable);
     }
 
-    public <T> Future<T> submit(Callable<T> callable) {
-        if (shutdown) throw new RejectedExecutionException("Pool is shut down");
-        FutureTask<T> ft = new FutureTask<>(callable);
-        try {
-            taskQueue.put(ft);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RejectedExecutionException("Interrupted while enqueuing task", e);
-        }
-        return ft;
+    /** Exposes the underlying executor for use with {@link CompletableFuture#supplyAsync}. */
+    public ExecutorService executor() {
+        return executor;
     }
 
     public void shutdown() {
-        shutdown = true;
+        executor.shutdown();
     }
 
     public void awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
-        long deadlineNs = System.nanoTime() + unit.toNanos(timeout);
-        for (Thread w : workers) {
-            long remainingMs = TimeUnit.NANOSECONDS.toMillis(deadlineNs - System.nanoTime());
-            if (remainingMs <= 0) break;
-            w.join(remainingMs);
-        }
+        executor.awaitTermination(timeout, unit);
     }
 }
