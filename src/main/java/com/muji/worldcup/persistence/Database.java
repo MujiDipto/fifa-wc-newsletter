@@ -1,0 +1,75 @@
+package com.muji.worldcup.persistence;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+public class Database {
+
+    private static final Logger log = LoggerFactory.getLogger(Database.class);
+
+    private final String jdbcUrl;
+
+    public Database(String dbPath) {
+        this.jdbcUrl = "jdbc:sqlite:" + dbPath;
+    }
+
+    public Connection connect() throws SQLException {
+        return DriverManager.getConnection(jdbcUrl);
+    }
+
+    public void initSchema() throws SQLException {
+        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS matches (
+                    id          TEXT PRIMARY KEY,
+                    home_team   TEXT NOT NULL,
+                    away_team   TEXT NOT NULL,
+                    home_score  INTEGER,
+                    away_score  INTEGER,
+                    status      TEXT,
+                    group_name  TEXT,
+                    kickoff_time TEXT,
+                    source      TEXT,
+                    fetched_at  TEXT NOT NULL
+                )
+                """);
+
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS group_standings (
+                    group_name       TEXT NOT NULL,
+                    team_name        TEXT NOT NULL,
+                    played           INTEGER,
+                    won              INTEGER,
+                    drawn            INTEGER,
+                    lost             INTEGER,
+                    goal_difference  INTEGER,
+                    points           INTEGER,
+                    position         INTEGER,
+                    fetched_at       TEXT NOT NULL,
+                    PRIMARY KEY (group_name, team_name)
+                )
+                """);
+
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS players (
+                    name                TEXT NOT NULL,
+                    team                TEXT NOT NULL,
+                    goals               INTEGER,
+                    assists             INTEGER,
+                    appearances         INTEGER,
+                    last_match_summary  TEXT,
+                    source              TEXT,
+                    fetched_at          TEXT NOT NULL,
+                    PRIMARY KEY (name, team)
+                )
+                """);
+
+            log.info("SQLite schema initialised at {}", jdbcUrl);
+        }
+    }
+}
