@@ -210,24 +210,26 @@ public class SqliteRepository {
     }
 
     public void upsertPlayerBio(TheSportsDbClient.PlayerBio bio) throws SQLException {
+        // Update by name only — TheSportsDB returns club team, not national team, so we
+        // must not use team as part of the match key or we'd create duplicate rows.
         String sql = """
-            INSERT INTO players (name, team, goals, assists, appearances, last_match_summary,
-                position, nationality, bio, source, fetched_at)
-            VALUES (?, ?, 0, 0, 0, null, ?, ?, ?, 'thesportsdb', ?)
-            ON CONFLICT(name, team) DO UPDATE SET
-                position    = excluded.position,
-                nationality = excluded.nationality,
-                bio         = excluded.bio,
-                fetched_at  = excluded.fetched_at
+            UPDATE players SET
+                position    = ?,
+                nationality = ?,
+                bio         = ?,
+                fetched_at  = ?
+            WHERE name = ?
             """;
         try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, bio.name());
-            ps.setString(2, bio.team() != null ? bio.team() : "");
-            ps.setString(3, bio.position());
-            ps.setString(4, bio.nationality());
-            ps.setString(5, bio.description());
-            ps.setString(6, Instant.now().toString());
-            ps.executeUpdate();
+            ps.setString(1, bio.position());
+            ps.setString(2, bio.nationality());
+            ps.setString(3, bio.description());
+            ps.setString(4, Instant.now().toString());
+            ps.setString(5, bio.name());
+            int updated = ps.executeUpdate();
+            if (updated == 0) {
+                log.debug("No existing player row for '{}' to attach bio to — skipping", bio.name());
+            }
         }
     }
 
