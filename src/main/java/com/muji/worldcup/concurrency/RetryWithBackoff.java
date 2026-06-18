@@ -25,6 +25,9 @@ public class RetryWithBackoff {
         while (true) {
             try {
                 return task.call();
+            } catch (NonRetryableException e) {
+                log.error("{} failed with non-retryable error: {}", taskName, e.getMessage());
+                throw e;
             } catch (Exception e) {
                 attempt++;
                 if (attempt >= maxAttempts) {
