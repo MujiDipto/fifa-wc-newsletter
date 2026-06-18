@@ -12,9 +12,9 @@ A daily personalized email newsletter for the 2026 FIFA World Cup. Each subscrib
 └───────────────────────┬─────────────────────────────┘
                         │
                         ▼
-┌─────────────────────────────────────────────────────┐
-│                  Java Pipeline (Main)                │
-│                                                     │
+┌────────────────────────────────────────────────────┐
+│                  Java Pipeline (Main)              │
+│                                                    │
 │  ┌──────────────┐   ┌──────────────┐               │
 │  │ football-    │   │     ESPN     │               │
 │  │ data.org     │   │  (no auth)   │               │
