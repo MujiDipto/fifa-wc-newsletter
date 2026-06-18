@@ -63,13 +63,41 @@ public class Database {
                     assists             INTEGER,
                     appearances         INTEGER,
                     last_match_summary  TEXT,
+                    position            TEXT,
+                    nationality         TEXT,
+                    bio                 TEXT,
                     source              TEXT,
                     fetched_at          TEXT NOT NULL,
                     PRIMARY KEY (name, team)
                 )
                 """);
 
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS news (
+                    id           TEXT PRIMARY KEY,
+                    headline     TEXT NOT NULL,
+                    description  TEXT,
+                    published_at TEXT,
+                    related_team TEXT,
+                    fetched_at   TEXT NOT NULL
+                )
+                """);
+
+            // Add bio columns to existing installs that predate this schema version
+            tryAddColumn(stmt, "players", "position", "TEXT");
+            tryAddColumn(stmt, "players", "nationality", "TEXT");
+            tryAddColumn(stmt, "players", "bio", "TEXT");
+
             log.info("SQLite schema initialised at {}", jdbcUrl);
+        }
+    }
+
+    // ALTER TABLE ADD COLUMN is idempotent via try/catch — SQLite has no IF NOT EXISTS for columns
+    private void tryAddColumn(Statement stmt, String table, String column, String type) {
+        try {
+            stmt.executeUpdate("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
+        } catch (SQLException ignored) {
+            // Column already exists — safe to ignore
         }
     }
 }

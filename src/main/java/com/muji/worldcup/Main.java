@@ -6,6 +6,7 @@ import com.muji.worldcup.concurrency.BoundedWorkerPool;
 import com.muji.worldcup.ingestion.EspnClient;
 import com.muji.worldcup.ingestion.FootballDataClient;
 import com.muji.worldcup.ingestion.IngestionService;
+import com.muji.worldcup.ingestion.TheSportsDbClient;
 import com.muji.worldcup.model.Subscriber;
 import com.muji.worldcup.persistence.Database;
 import com.muji.worldcup.persistence.SqliteRepository;
@@ -39,9 +40,10 @@ public class Main {
                 EnvLoader.getRequired("FOOTBALL_DATA_API_TOKEN"));
 
         EspnClient espnClient = new EspnClient();
+        TheSportsDbClient theSportsDbClient = new TheSportsDbClient();
 
         IngestionService ingestion = new IngestionService(
-                pool, footballDataClient, espnClient, repository);
+                pool, footballDataClient, espnClient, theSportsDbClient, repository);
 
         ingestion.ingest(LocalDate.now());
 

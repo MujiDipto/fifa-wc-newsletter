@@ -2,6 +2,7 @@ package com.muji.worldcup.ingestion;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.muji.worldcup.model.NewsItem;
 import com.muji.worldcup.model.Player;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -93,6 +95,37 @@ public class EspnClient implements DataSource {
         }
         log.info("Fetched {} player record(s) for ESPN event {}", players.size(), eventId);
         return players;
+    }
+
+    /**
+     * Fetches the latest WC news articles from ESPN.
+     * Each article is tagged with a related team where ESPN provides one.
+     */
+    public List<NewsItem> fetchNews() throws Exception {
+        String url = BASE + "/news";
+        JsonNode root = get(url);
+
+        List<NewsItem> items = new ArrayList<>();
+        for (JsonNode article : root.path("articles")) {
+            String id = article.path("dataSourceIdentifier").asText(
+                    String.valueOf(article.path("id").asLong()));
+            String headline = article.path("headline").asText();
+            String description = article.path("description").asText(null);
+            String publishedStr = article.path("published").asText(null);
+            Instant publishedAt = publishedStr != null ? Instant.parse(publishedStr) : Instant.now();
+
+            // Extract first team category if present
+            String relatedTeam = null;
+            for (JsonNode cat : article.path("categories")) {
+                if ("team".equalsIgnoreCase(cat.path("type").asText())) {
+                    relatedTeam = cat.path("description").asText(null);
+                    break;
+                }
+            }
+            items.add(new NewsItem(id, headline, description, publishedAt, relatedTeam));
+        }
+        log.info("Fetched {} news article(s) from ESPN", items.size());
+        return items;
     }
 
     private JsonNode get(String url) throws Exception {

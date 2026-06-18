@@ -1,7 +1,9 @@
 package com.muji.worldcup.persistence;
 
+import com.muji.worldcup.ingestion.TheSportsDbClient;
 import com.muji.worldcup.model.GroupStanding;
 import com.muji.worldcup.model.Match;
+import com.muji.worldcup.model.NewsItem;
 import com.muji.worldcup.model.Player;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -205,6 +207,82 @@ public class SqliteRepository {
             int[] counts = ps.executeBatch();
             log.info("Upserted {} player row(s)", counts.length);
         }
+    }
+
+    public void upsertPlayerBio(TheSportsDbClient.PlayerBio bio) throws SQLException {
+        String sql = """
+            INSERT INTO players (name, team, goals, assists, appearances, last_match_summary,
+                position, nationality, bio, source, fetched_at)
+            VALUES (?, ?, 0, 0, 0, null, ?, ?, ?, 'thesportsdb', ?)
+            ON CONFLICT(name, team) DO UPDATE SET
+                position    = excluded.position,
+                nationality = excluded.nationality,
+                bio         = excluded.bio,
+                fetched_at  = excluded.fetched_at
+            """;
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, bio.name());
+            ps.setString(2, bio.team() != null ? bio.team() : "");
+            ps.setString(3, bio.position());
+            ps.setString(4, bio.nationality());
+            ps.setString(5, bio.description());
+            ps.setString(6, Instant.now().toString());
+            ps.executeUpdate();
+        }
+    }
+
+    // --- News ---
+
+    public void upsertNews(List<NewsItem> items) throws SQLException {
+        String sql = """
+            INSERT INTO news (id, headline, description, published_at, related_team, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                headline     = excluded.headline,
+                description  = excluded.description,
+                fetched_at   = excluded.fetched_at
+            """;
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            String now = Instant.now().toString();
+            for (NewsItem item : items) {
+                ps.setString(1, item.id());
+                ps.setString(2, item.headline());
+                ps.setString(3, item.description());
+                ps.setString(4, item.publishedAt() != null ? item.publishedAt().toString() : null);
+                ps.setString(5, item.relatedTeam());
+                ps.setString(6, now);
+                ps.addBatch();
+            }
+            int[] counts = ps.executeBatch();
+            log.info("Upserted {} news item(s)", counts.length);
+        }
+    }
+
+    public List<NewsItem> findNewsByTeam(String teamName) throws SQLException {
+        String sql = """
+            SELECT id, headline, description, published_at, related_team
+            FROM news
+            WHERE related_team = ?
+            ORDER BY published_at DESC
+            LIMIT 5
+            """;
+        List<NewsItem> results = new ArrayList<>();
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, teamName);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String pub = rs.getString("published_at");
+                    results.add(new NewsItem(
+                            rs.getString("id"),
+                            rs.getString("headline"),
+                            rs.getString("description"),
+                            pub != null ? Instant.parse(pub) : null,
+                            rs.getString("related_team")
+                    ));
+                }
+            }
+        }
+        return results;
     }
 
     public Player findPlayer(String name) throws SQLException {
