@@ -1,5 +1,6 @@
 .env
 .claude/
+project-requirements.md
 target/
 *.db
 *.sqlite
