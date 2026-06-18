@@ -3,7 +3,7 @@ package com.muji.worldcup;
 import com.muji.worldcup.config.EnvLoader;
 import com.muji.worldcup.config.SubscriberConfigLoader;
 import com.muji.worldcup.concurrency.BoundedWorkerPool;
-import com.muji.worldcup.ingestion.ApiFootballClient;
+import com.muji.worldcup.ingestion.EspnClient;
 import com.muji.worldcup.ingestion.FootballDataClient;
 import com.muji.worldcup.ingestion.IngestionService;
 import com.muji.worldcup.model.Subscriber;
@@ -33,17 +33,15 @@ public class Main {
 
         SqliteRepository repository = new SqliteRepository(db);
 
-        // Pool sized to 4: two sources × 2 concurrent fetches each is comfortable
         BoundedWorkerPool pool = new BoundedWorkerPool(4, 16);
 
         FootballDataClient footballDataClient = new FootballDataClient(
                 EnvLoader.getRequired("FOOTBALL_DATA_API_TOKEN"));
 
-        ApiFootballClient apiFootballClient = new ApiFootballClient(
-                EnvLoader.getRequired("RAPIDAPI_KEY"));
+        EspnClient espnClient = new EspnClient();
 
         IngestionService ingestion = new IngestionService(
-                pool, footballDataClient, apiFootballClient, repository);
+                pool, footballDataClient, espnClient, repository);
 
         ingestion.ingest(LocalDate.now());
 

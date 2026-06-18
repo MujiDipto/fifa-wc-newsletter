@@ -18,7 +18,7 @@ import java.util.concurrent.Future;
 
 /**
  * Orchestrates concurrent ingestion from both data sources via the worker pool.
- * football-data.org and api-football run in parallel; their results are merged
+ * football-data.org and ESPN run in parallel; their results are merged
  * and persisted to SQLite.
  */
 public class IngestionService {
@@ -27,21 +27,21 @@ public class IngestionService {
 
     private final BoundedWorkerPool pool;
     private final FootballDataClient footballDataClient;
-    private final ApiFootballClient apiFootballClient;
+    private final EspnClient espnClient;
     private final SqliteRepository repository;
     private final RetryWithBackoff retry;
 
     public IngestionService(
             BoundedWorkerPool pool,
             FootballDataClient footballDataClient,
-            ApiFootballClient apiFootballClient,
+            EspnClient espnClient,
             SqliteRepository repository
     ) {
         this.pool = pool;
         this.footballDataClient = footballDataClient;
-        this.apiFootballClient = apiFootballClient;
+        this.espnClient = espnClient;
         this.repository = repository;
-        // 3 attempts, 5s initial delay, 2x backoff — covers transient 429s and network blips
+        // 3 attempts, 5s initial delay, 2x backoff — covers transient errors and rate limits
         this.retry = new RetryWithBackoff(3, 5_000, 2.0);
     }
 
@@ -58,18 +58,17 @@ public class IngestionService {
         Future<List<Player>> scorersFuture = pool.submit(
                 () -> retry.execute("fetchScorers", footballDataClient::fetchScorers));
 
-        Future<List<Player>> playerStatsFuture = pool.submit(
-                () -> retry.execute("fetchPlayerStats", apiFootballClient::fetchPlayerStats));
+        Future<List<Player>> espnScorersFuture = pool.submit(
+                () -> retry.execute("espnTopScorers", espnClient::fetchTopScorers));
 
         // Collect — propagate any failure immediately
         List<Match> matches = matchesFuture.get();
         List<GroupStanding> standings = standingsFuture.get();
-        List<Player> scorers = scorersFuture.get();
-        List<Player> apiPlayers = playerStatsFuture.get();
+        List<Player> fdScorers = scorersFuture.get();
+        List<Player> espnScorers = espnScorersFuture.get();
 
-        // Merge player data: api-football stats take precedence for goals/assists/appearances;
-        // football-data.org scorers fill in anyone api-football missed
-        List<Player> mergedPlayers = mergePlayers(scorers, apiPlayers);
+        // Merge: football-data.org scorers are the base; ESPN enriches where it can
+        List<Player> mergedPlayers = mergePlayers(fdScorers, espnScorers);
 
         repository.upsertMatches(matches);
         repository.upsertStandings(standings);
@@ -79,16 +78,12 @@ public class IngestionService {
                 matches.size(), standings.size(), mergedPlayers.size());
     }
 
-    private List<Player> mergePlayers(List<Player> scorers, List<Player> apiPlayers) {
+    private List<Player> mergePlayers(List<Player> base, List<Player> overlay) {
         Map<String, Player> merged = new HashMap<>();
-        // Start with scorers from football-data.org as the base
-        for (Player p : scorers) {
-            merged.put(p.name().toLowerCase(), p);
-        }
-        // Overlay with api-football data which has richer stats
-        for (Player p : apiPlayers) {
-            merged.put(p.name().toLowerCase(), p);
-        }
+        for (Player p : base) merged.put(p.name().toLowerCase(), p);
+        // Overlay adds any ESPN-only entries; existing entries keep football-data.org's goal counts
+        // since that source is authoritative for scorers
+        for (Player p : overlay) merged.putIfAbsent(p.name().toLowerCase(), p);
         return new ArrayList<>(merged.values());
     }
 }
