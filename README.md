@@ -8,7 +8,7 @@ A daily personalized email newsletter for the 2026 FIFA World Cup. Each subscrib
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    Daily cron / systemd              │
+│                    Daily cron / systemd             │
 └───────────────────────┬─────────────────────────────┘
                         │
                         ▼
