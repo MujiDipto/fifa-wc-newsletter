@@ -53,20 +53,36 @@ public class FootballDataClient implements DataSource {
 
         List<Match> matches = new ArrayList<>();
         for (JsonNode m : root.path("matches")) {
-            matches.add(new Match(
-                    m.path("id").asText(),
-                    m.path("homeTeam").path("name").asText(),
-                    m.path("awayTeam").path("name").asText(),
-                    scoreOrNull(m, "home"),
-                    scoreOrNull(m, "away"),
-                    m.path("status").asText(),
-                    m.path("group").asText(null),
-                    Instant.parse(m.path("utcDate").asText()),
-                    SOURCE
-            ));
+            matches.add(parseMatch(m));
         }
         log.info("Fetched {} matches for {}", matches.size(), date);
         return matches;
+    }
+
+    public List<Match> fetchScheduledMatches() throws Exception {
+        String url = BASE_URL + "/competitions/WC/matches?status=SCHEDULED";
+        JsonNode root = get(url);
+
+        List<Match> matches = new ArrayList<>();
+        for (JsonNode m : root.path("matches")) {
+            matches.add(parseMatch(m));
+        }
+        log.info("Fetched {} scheduled (upcoming) matches", matches.size());
+        return matches;
+    }
+
+    private Match parseMatch(JsonNode m) {
+        return new Match(
+                m.path("id").asText(),
+                m.path("homeTeam").path("name").asText(),
+                m.path("awayTeam").path("name").asText(),
+                scoreOrNull(m, "home"),
+                scoreOrNull(m, "away"),
+                m.path("status").asText(),
+                m.path("group").asText(null),
+                Instant.parse(m.path("utcDate").asText()),
+                SOURCE
+        );
     }
 
     public List<GroupStanding> fetchStandings() throws Exception {

@@ -38,7 +38,7 @@ public class EmailSender {
         message.setFrom(new InternetAddress(from));
         message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
         message.setSubject(email.subject());
-        message.setText(email.body(), "utf-8");
+        message.setContent(email.body(), "text/html; charset=utf-8");
 
         Transport.send(message);
         log.info("Sent email to {} — subject: {}", to, email.subject());

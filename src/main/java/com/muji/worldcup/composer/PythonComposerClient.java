@@ -3,6 +3,7 @@ package com.muji.worldcup.composer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muji.worldcup.concurrency.NonRetryableException;
+import com.muji.worldcup.concurrency.RateLimiter;
 import com.muji.worldcup.concurrency.RetryWithBackoff;
 import com.muji.worldcup.model.ComposedEmail;
 import com.muji.worldcup.model.ContextBundle;
@@ -30,6 +31,8 @@ public class PythonComposerClient {
     private final HttpClient http;
     private final ObjectMapper mapper;
     private final RetryWithBackoff retry;
+    // Gemini free tier: 15 RPM, but keep conservative to avoid bursts
+    private final RateLimiter rateLimiter = new RateLimiter("gemini", 6, 60_000);
 
     public PythonComposerClient(String baseUrl) {
         this.baseUrl = baseUrl;
@@ -37,12 +40,12 @@ public class PythonComposerClient {
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         this.mapper = new ObjectMapper();
-        // Gemini free tier can 429 — 4 attempts, 30s initial delay, 1.5x backoff
         this.retry = new RetryWithBackoff(4, 30_000, 1.5);
     }
 
     public ComposedEmail compose(ContextBundle bundle) throws Exception {
         String json = serializeBundle(bundle);
+        rateLimiter.acquire();
 
         return retry.execute("compose:" + bundle.subscriber().email(), () -> {
             HttpRequest request = HttpRequest.newBuilder()
@@ -87,20 +90,56 @@ public class PythonComposerClient {
     }
 
     private String serializeBundle(ContextBundle bundle) throws Exception {
-        // Flatten into a plain map so field names match what Python expects
         var subscriber = bundle.subscriber();
         var node = mapper.createObjectNode();
 
         var subNode = node.putObject("subscriber");
-        subNode.put("email",         subscriber.email());
-        subNode.put("followedTeam",  subscriber.followedTeam());
+        subNode.put("email",          subscriber.email());
+        subNode.put("followedTeam",   subscriber.followedTeam());
         subNode.put("followedPlayer", subscriber.followedPlayer());
 
-        node.put("matchDayRecapText",  bundle.matchDayRecapText());
-        node.put("teamUpdate",         bundle.teamUpdate());
-        node.put("playerUpdate",       bundle.playerUpdate());
+        node.put("matchDayRecapText",   bundle.matchDayRecapText());
+        node.put("teamUpdate",          bundle.teamUpdate());
+        node.put("playerUpdate",        bundle.playerUpdate());
         node.put("nextMatchDayPreview", bundle.nextMatchDayPreview());
-        node.put("eliminationStatus",  bundle.eliminationStatus().name());
+        node.put("eliminationStatus",   bundle.eliminationStatus().name());
+
+        // Full group standings table
+        var tableArr = node.putArray("groupTable");
+        if (bundle.groupTable() != null) {
+            for (var s : bundle.groupTable()) {
+                var row = tableArr.addObject();
+                row.put("position",       s.position());
+                row.put("team",           s.teamName());
+                row.put("played",         s.played());
+                row.put("won",            s.won());
+                row.put("drawn",          s.drawn());
+                row.put("lost",           s.lost());
+                row.put("goalDifference", s.goalDifference());
+                row.put("points",         s.points());
+            }
+        }
+
+        // Most recent finished result
+        if (bundle.lastResult() != null) {
+            var m = bundle.lastResult();
+            var lastNode = node.putObject("lastResult");
+            lastNode.put("homeTeam",    m.homeTeam());
+            lastNode.put("awayTeam",    m.awayTeam());
+            lastNode.put("homeScore",   m.homeScore() != null ? m.homeScore() : -1);
+            lastNode.put("awayScore",   m.awayScore() != null ? m.awayScore() : -1);
+            lastNode.put("kickoffTime", m.kickoffTime() != null ? m.kickoffTime().toString() : null);
+        }
+
+        // Next fixture
+        if (bundle.nextMatch() != null) {
+            var m = bundle.nextMatch();
+            var nextNode = node.putObject("nextMatch");
+            nextNode.put("homeTeam",    m.homeTeam());
+            nextNode.put("awayTeam",    m.awayTeam());
+            nextNode.put("kickoffTime", m.kickoffTime() != null ? m.kickoffTime().toString() : null);
+            nextNode.put("group",       m.group());
+        }
 
         return mapper.writeValueAsString(node);
     }

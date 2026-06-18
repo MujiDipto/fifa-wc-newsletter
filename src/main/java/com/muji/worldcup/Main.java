@@ -95,7 +95,8 @@ public class Main {
             return;
         }
 
-        BoundedWorkerPool composerPool = new BoundedWorkerPool(2, 16);
+        // Single worker — serialises Gemini calls to avoid free-tier 429s
+        BoundedWorkerPool composerPool = new BoundedWorkerPool(1, 16);
         FanOutQueue<ContextBundle, ComposedEmail> composeFanOut = new FanOutQueue<>(composerPool);
 
         // Map bundle → composed email, keyed by subscriber email for delivery

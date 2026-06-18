@@ -148,6 +148,36 @@ public class SqliteRepository {
         }
     }
 
+    public List<GroupStanding> findStandingsByGroup(String groupName) throws SQLException {
+        String sql = """
+            SELECT group_name, team_name, played, won, drawn, lost,
+                   goal_difference, points, position
+            FROM group_standings
+            WHERE group_name = ?
+            ORDER BY position ASC
+            """;
+        List<GroupStanding> results = new ArrayList<>();
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, groupName);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    results.add(new GroupStanding(
+                            rs.getString("group_name"),
+                            rs.getString("team_name"),
+                            rs.getInt("played"),
+                            rs.getInt("won"),
+                            rs.getInt("drawn"),
+                            rs.getInt("lost"),
+                            rs.getInt("goal_difference"),
+                            rs.getInt("points"),
+                            rs.getInt("position")
+                    ));
+                }
+            }
+        }
+        return results;
+    }
+
     public List<GroupStanding> findStandingsByTeam(String teamName) throws SQLException {
         String sql = """
             SELECT group_name, team_name, played, won, drawn, lost,

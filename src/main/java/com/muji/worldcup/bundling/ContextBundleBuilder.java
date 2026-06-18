@@ -10,13 +10,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-/**
- * Assembles a ContextBundle for one subscriber by pulling all relevant data
- * from SQLite and formatting it into text sections for the LLM composer.
- *
- * One bundle is built per subscriber; the underlying data queries are shared
- * across subscribers following the same team/player (SQLite reads are cheap).
- */
 public class ContextBundleBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(ContextBundleBuilder.class);
@@ -35,7 +28,10 @@ public class ContextBundleBuilder {
         String matchDayRecap = buildMatchDayRecap(subscriber.followedTeam());
         String teamUpdate    = buildTeamUpdate(subscriber.followedTeam());
         String playerUpdate  = buildPlayerUpdate(subscriber.followedPlayer());
-        String nextPreview   = buildNextMatchPreview(subscriber.followedTeam());
+        Match nextMatch      = findNextMatch(subscriber.followedTeam());
+        Match lastResult     = findLastResult(subscriber.followedTeam());
+        String nextPreview   = formatNextMatch(subscriber.followedTeam(), nextMatch);
+        List<GroupStanding> groupTable = buildGroupTable(subscriber.followedTeam());
 
         log.info("Built bundle for {}", subscriber.email());
         return new ContextBundle(
@@ -44,11 +40,12 @@ public class ContextBundleBuilder {
                 teamUpdate,
                 playerUpdate,
                 nextPreview,
-                ContextBundle.EliminationStatus.ACTIVE
+                ContextBundle.EliminationStatus.ACTIVE,
+                groupTable,
+                nextMatch,
+                lastResult
         );
     }
-
-    // --- Section builders ---
 
     private String buildMatchDayRecap(String teamName) throws SQLException {
         if (teamName == null) return null;
@@ -109,7 +106,6 @@ public class ContextBundleBuilder {
             sb.append("\nLast match: ").append(player.lastMatchSummary());
         }
         if (player.bio() != null && !player.bio().isBlank()) {
-            // Truncate long bios — the LLM gets the flavour without flooding the context
             String bio = player.bio().length() > 300
                     ? player.bio().substring(0, 300) + "…"
                     : player.bio();
@@ -119,18 +115,27 @@ public class ContextBundleBuilder {
         return sb.toString();
     }
 
-    private String buildNextMatchPreview(String teamName) throws SQLException {
+    private Match findLastResult(String teamName) throws SQLException {
+        if (teamName == null) return null;
+        return repository.findMatchesByTeam(teamName).stream()
+                .filter(m -> "FINISHED".equals(m.status()))
+                .findFirst()  // findMatchesByTeam orders by kickoff DESC
+                .orElse(null);
+    }
+
+    private Match findNextMatch(String teamName) throws SQLException {
         if (teamName == null) return null;
 
-        List<Match> upcoming = repository.findUpcomingMatches().stream()
+        return repository.findUpcomingMatches().stream()
                 .filter(m -> teamName.equals(m.homeTeam()) || teamName.equals(m.awayTeam()))
-                .toList();
+                .findFirst()
+                .orElse(null);
+    }
 
-        if (upcoming.isEmpty()) {
-            return "No upcoming matches scheduled for " + teamName + ".";
-        }
+    private String formatNextMatch(String teamName, Match next) {
+        if (teamName == null) return null;
+        if (next == null) return "No upcoming match scheduled for " + teamName + ".";
 
-        Match next = upcoming.get(0);
         String opponent = teamName.equals(next.homeTeam()) ? next.awayTeam() : next.homeTeam();
         String venue    = teamName.equals(next.homeTeam()) ? "vs" : "at";
 
@@ -138,6 +143,16 @@ public class ContextBundleBuilder {
                 teamName, venue, opponent,
                 DATE_FMT.format(next.kickoffTime()),
                 TIME_FMT.format(next.kickoffTime()));
+    }
+
+    private List<GroupStanding> buildGroupTable(String teamName) throws SQLException {
+        if (teamName == null) return List.of();
+
+        List<GroupStanding> teamStandings = repository.findStandingsByTeam(teamName);
+        if (teamStandings.isEmpty()) return List.of();
+
+        String groupName = teamStandings.get(0).group();
+        return repository.findStandingsByGroup(groupName);
     }
 
     private String formatMatchResult(Match m) {

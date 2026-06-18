@@ -55,8 +55,19 @@ public class IngestionService {
         log.info("Starting ingestion for {}", date);
 
         // Fan out football-data.org fetches + ESPN news concurrently
-        Future<List<Match>> matchesFuture = pool.submit(
-                () -> retry.execute("fetchMatches", () -> footballDataClient.fetchMatches(date)));
+        // Fetch today + recent past (last 7 days) so recent results are always in the DB
+        Future<List<Match>> matchesFuture = pool.submit(() -> {
+            List<Match> all = new java.util.ArrayList<>();
+            for (int i = 6; i >= 0; i--) {
+                final int daysBack = i;
+                all.addAll(retry.execute("fetchMatches-" + daysBack,
+                        () -> footballDataClient.fetchMatches(date.minusDays(daysBack))));
+            }
+            return all;
+        });
+
+        Future<List<Match>> scheduledFuture = pool.submit(
+                () -> retry.execute("fetchScheduledMatches", footballDataClient::fetchScheduledMatches));
 
         Future<List<GroupStanding>> standingsFuture = pool.submit(
                 () -> retry.execute("fetchStandings", footballDataClient::fetchStandings));
@@ -69,10 +80,12 @@ public class IngestionService {
 
         // Collect football-data.org results — these are required
         List<Match> matches = matchesFuture.get();
+        List<Match> scheduledMatches = scheduledFuture.get();
         List<GroupStanding> standings = standingsFuture.get();
         List<Player> players = scorersFuture.get();
 
         repository.upsertMatches(matches);
+        repository.upsertMatches(scheduledMatches);
         repository.upsertStandings(standings);
         repository.upsertPlayers(players);
 
