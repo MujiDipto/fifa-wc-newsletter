@@ -32,7 +32,8 @@ def compose_newsletter(bundle: dict) -> dict:
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.8,
-            max_output_tokens=600,
+            max_output_tokens=8192,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
 

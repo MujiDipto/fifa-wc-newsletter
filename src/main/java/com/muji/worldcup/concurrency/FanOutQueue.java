@@ -31,7 +31,8 @@ public class FanOutQueue<T, R> {
                 .map(input -> CompletableFuture
                         .supplyAsync(() -> processor.apply(input), pool.executor())
                         .exceptionally(ex -> {
-                            log.warn("FanOutQueue: processing failed for {}: {}", input, ex.getMessage());
+                            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                            log.warn("FanOutQueue: processing failed for {}: {}", input, cause.getMessage(), cause);
                             deadLetters.add(input);
                             return null;
                         }))

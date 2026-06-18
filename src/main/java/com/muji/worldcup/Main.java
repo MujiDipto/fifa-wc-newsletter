@@ -7,6 +7,7 @@ import com.muji.worldcup.config.SubscriberConfigLoader;
 import com.muji.worldcup.concurrency.BoundedWorkerPool;
 import com.muji.worldcup.concurrency.FanOutQueue;
 import com.muji.worldcup.concurrency.PrioritisedJobScheduler;
+import com.muji.worldcup.delivery.EmailSender;
 import com.muji.worldcup.ingestion.EspnClient;
 import com.muji.worldcup.ingestion.FootballDataClient;
 import com.muji.worldcup.ingestion.IngestionService;
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -90,50 +92,70 @@ public class Main {
         if (!composer.isHealthy()) {
             log.warn("Python composer is not running at {} — skipping composition. " +
                      "Start it with: cd python-composer && uvicorn main:app", COMPOSER_URL);
-            printBundles(bundles);
-        } else {
-            BoundedWorkerPool composerPool = new BoundedWorkerPool(2, 16);
-            FanOutQueue<ContextBundle, ComposedEmail> composeFanOut = new FanOutQueue<>(composerPool);
-
-            List<ComposedEmail> emails = composeFanOut.process(bundles,
-                    bundle -> {
-                        try {
-                            return composer.compose(bundle);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-
-            composerPool.shutdown();
-            composerPool.awaitTermination(30, TimeUnit.SECONDS);
-
-            for (int i = 0; i < emails.size(); i++) {
-                printEmail(bundles.get(i).subscriber().email(), emails.get(i));
-            }
-
-            if (!composeFanOut.deadLetters().isEmpty()) {
-                log.error("Composition failed for {} subscriber(s)", composeFanOut.deadLetters().size());
-            }
+            return;
         }
 
-        log.info("Pipeline run complete");
-    }
+        BoundedWorkerPool composerPool = new BoundedWorkerPool(2, 16);
+        FanOutQueue<ContextBundle, ComposedEmail> composeFanOut = new FanOutQueue<>(composerPool);
 
-    private static void printBundles(List<ContextBundle> bundles) {
-        for (ContextBundle b : bundles) {
-            System.out.println("\n=== Bundle: " + b.subscriber().email() + " ===");
-            System.out.println("Team:   " + b.teamUpdate());
-            System.out.println("Player: " + b.playerUpdate());
-            System.out.println("Next:   " + b.nextMatchDayPreview());
+        // Map bundle → composed email, keyed by subscriber email for delivery
+        List<ComposedEmail> emails = composeFanOut.process(bundles, bundle -> {
+            try {
+                return composer.compose(bundle);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        composerPool.shutdown();
+        composerPool.awaitTermination(30, TimeUnit.SECONDS);
+
+        if (!composeFanOut.deadLetters().isEmpty()) {
+            log.error("Composition failed for {} subscriber(s): {}",
+                    composeFanOut.deadLetters().size(), composeFanOut.deadLetters());
         }
-    }
 
-    private static void printEmail(String to, ComposedEmail email) {
-        System.out.println("\n========================================");
-        System.out.println("To      : " + to);
-        System.out.println("Subject : " + email.subject());
-        System.out.println("----------------------------------------");
-        System.out.println(email.body());
-        System.out.println("========================================");
+        // --- Delivery ---
+        String smtpHost = EnvLoader.getRequired("SMTP_HOST");
+        int smtpPort    = Integer.parseInt(EnvLoader.getRequired("SMTP_PORT"));
+        String smtpUser = EnvLoader.getRequired("SMTP_USERNAME");
+        String smtpPass = EnvLoader.getRequired("SMTP_PASSWORD");
+        EmailSender sender = new EmailSender(smtpHost, smtpPort, smtpUser, smtpPass);
+
+        // Build a lookup of subscriber email → composed email.
+        // FanOutQueue preserves input order for successes, so we pair by iterating
+        // both lists; the composed email count may be less than bundles if some failed.
+        Set<String> deadLetterEmails = composeFanOut.deadLetters().stream()
+                .map(b -> b.subscriber().email())
+                .collect(Collectors.toSet());
+        List<ContextBundle> succeededBundles = bundles.stream()
+                .filter(b -> !deadLetterEmails.contains(b.subscriber().email()))
+                .toList();
+        Map<String, ComposedEmail> emailBySubscriber = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < succeededBundles.size() && i < emails.size(); i++) {
+            emailBySubscriber.put(succeededBundles.get(i).subscriber().email(), emails.get(i));
+        }
+
+        BoundedWorkerPool deliveryPool = new BoundedWorkerPool(2, 16);
+        FanOutQueue<Map.Entry<String, ComposedEmail>, Void> deliveryFanOut = new FanOutQueue<>(deliveryPool);
+
+        deliveryFanOut.process(new java.util.ArrayList<>(emailBySubscriber.entrySet()), entry -> {
+            try {
+                sender.send(entry.getKey(), entry.getValue());
+                return null;
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to send to " + entry.getKey(), e);
+            }
+        });
+
+        deliveryPool.shutdown();
+        deliveryPool.awaitTermination(30, TimeUnit.SECONDS);
+
+        if (!deliveryFanOut.deadLetters().isEmpty()) {
+            log.error("Delivery failed for {} subscriber(s): {}",
+                    deliveryFanOut.deadLetters().size(), deliveryFanOut.deadLetters());
+        }
+
+        log.info("Pipeline run complete — {} email(s) sent", emailBySubscriber.size());
     }
 }
