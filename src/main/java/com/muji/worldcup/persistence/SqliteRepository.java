@@ -182,13 +182,16 @@ public class SqliteRepository {
     public void upsertPlayers(List<Player> players) throws SQLException {
         String sql = """
             INSERT INTO players (name, team, goals, assists, appearances,
-                last_match_summary, source, fetched_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                last_match_summary, position, nationality, bio, source, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(name, team) DO UPDATE SET
                 goals              = excluded.goals,
                 assists            = excluded.assists,
                 appearances        = excluded.appearances,
                 last_match_summary = COALESCE(excluded.last_match_summary, players.last_match_summary),
+                position           = COALESCE(excluded.position, players.position),
+                nationality        = COALESCE(excluded.nationality, players.nationality),
+                bio                = COALESCE(excluded.bio, players.bio),
                 fetched_at         = excluded.fetched_at
             """;
         try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -200,8 +203,11 @@ public class SqliteRepository {
                 ps.setInt(4, p.assists());
                 ps.setInt(5, p.appearances());
                 ps.setString(6, p.lastMatchSummary());
-                ps.setString(7, p.bio() != null ? "thesportsdb" : "football-data.org");
-                ps.setString(8, now);
+                ps.setString(7, p.position());
+                ps.setString(8, p.nationality());
+                ps.setString(9, p.bio());
+                ps.setString(10, p.bio() != null ? "thesportsdb" : "football-data.org");
+                ps.setString(11, now);
                 ps.addBatch();
             }
             int[] counts = ps.executeBatch();

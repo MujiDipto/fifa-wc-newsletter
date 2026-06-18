@@ -15,7 +15,8 @@ public class Database {
     private final String jdbcUrl;
 
     public Database(String dbPath) {
-        this.jdbcUrl = "jdbc:sqlite:" + dbPath;
+        // Allow passing a full JDBC URL directly (e.g. for named in-memory test DBs)
+        this.jdbcUrl = dbPath.startsWith("jdbc:") ? dbPath : "jdbc:sqlite:" + dbPath;
     }
 
     public Connection connect() throws SQLException {
