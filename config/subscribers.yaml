@@ -1,0 +1,7 @@
+subscribers:
+  - email: friend1@example.com
+    team: Argentina
+    player: Messi
+  - email: friend2@example.com
+    team: Spain
+    player: null

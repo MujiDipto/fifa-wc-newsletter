@@ -1,0 +1,9 @@
+.env
+target/
+*.db
+*.sqlite
+*.class
+.DS_Store
+__pycache__/
+*.pyc
+python-composer/.venv/
