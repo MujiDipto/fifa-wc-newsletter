@@ -269,6 +269,76 @@ public class SqliteRepository {
         }
     }
 
+    // --- Subscribers ---
+
+    public void upsertSubscriber(com.muji.worldcup.model.Subscriber s) throws SQLException {
+        String sql = """
+            INSERT INTO subscribers (email, followed_team, followed_player, timezone, created_at, active)
+            VALUES (?, ?, ?, ?, ?, 1)
+            ON CONFLICT(email) DO UPDATE SET
+                followed_team   = excluded.followed_team,
+                followed_player = excluded.followed_player,
+                timezone        = excluded.timezone,
+                active          = 1
+            """;
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, s.email());
+            ps.setString(2, s.followedTeam());
+            ps.setString(3, s.followedPlayer());
+            ps.setString(4, s.timezone());
+            ps.setString(5, java.time.Instant.now().toString());
+            ps.executeUpdate();
+        }
+    }
+
+    public List<com.muji.worldcup.model.Subscriber> getActiveSubscribers() throws SQLException {
+        String sql = """
+            SELECT email, followed_team, followed_player, timezone
+            FROM subscribers
+            WHERE active = 1
+            ORDER BY created_at ASC
+            """;
+        List<com.muji.worldcup.model.Subscriber> results = new ArrayList<>();
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    results.add(new com.muji.worldcup.model.Subscriber(
+                            rs.getString("email"),
+                            rs.getString("followed_team"),
+                            rs.getString("followed_player"),
+                            rs.getString("timezone")
+                    ));
+                }
+            }
+        }
+        return results;
+    }
+
+    public List<String> getDistinctTeams() throws SQLException {
+        String sql = "SELECT DISTINCT team_name FROM group_standings ORDER BY team_name ASC";
+        List<String> teams = new ArrayList<>();
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) teams.add(rs.getString("team_name"));
+            }
+        }
+        return teams;
+    }
+
+    public List<String> getPlayersByTeam(String team) throws SQLException {
+        String sql = """
+            SELECT name FROM players WHERE team = ? ORDER BY goals DESC, name ASC
+            """;
+        List<String> names = new ArrayList<>();
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, team);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) names.add(rs.getString("name"));
+            }
+        }
+        return names;
+    }
+
     // --- News ---
 
     public void upsertNews(List<NewsItem> items) throws SQLException {

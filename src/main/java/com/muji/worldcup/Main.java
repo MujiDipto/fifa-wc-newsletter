@@ -3,7 +3,6 @@ package com.muji.worldcup;
 import com.muji.worldcup.bundling.ContextBundleBuilder;
 import com.muji.worldcup.composer.PythonComposerClient;
 import com.muji.worldcup.config.EnvLoader;
-import com.muji.worldcup.config.SubscriberConfigLoader;
 import com.muji.worldcup.concurrency.BoundedWorkerPool;
 import com.muji.worldcup.concurrency.FanOutQueue;
 import com.muji.worldcup.concurrency.PrioritisedJobScheduler;
@@ -37,13 +36,12 @@ public class Main {
     public static void main(String[] args) throws Exception {
         EnvLoader.load(Path.of(".env"));
 
-        List<Subscriber> subscribers = new SubscriberConfigLoader()
-                .load(Path.of("config/subscribers.yaml"));
-        log.info("Loaded {} subscriber(s)", subscribers.size());
-
         Database db = new Database("worldcup.db");
         db.initSchema();
         SqliteRepository repository = new SqliteRepository(db);
+
+        List<Subscriber> subscribers = repository.getActiveSubscribers();
+        log.info("Loaded {} subscriber(s) from database", subscribers.size());
 
         // --- Ingestion ---
         BoundedWorkerPool ingestionPool = new BoundedWorkerPool(4, 16);

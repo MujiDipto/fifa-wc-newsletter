@@ -97,6 +97,7 @@ public class PythonComposerClient {
         subNode.put("email",          subscriber.email());
         subNode.put("followedTeam",   subscriber.followedTeam());
         subNode.put("followedPlayer", subscriber.followedPlayer());
+        subNode.put("timezone",       subscriber.timezone());
 
         node.put("matchDayRecapText",   bundle.matchDayRecapText());
         node.put("teamUpdate",          bundle.teamUpdate());

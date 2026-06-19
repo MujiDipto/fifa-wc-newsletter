@@ -7,6 +7,7 @@ def build_html(bundle: dict, sections: dict) -> str:
     subscriber  = bundle.get("subscriber", {})
     team        = subscriber.get("followedTeam")
     player      = subscriber.get("followedPlayer")
+    timezone    = subscriber.get("timezone", "UTC")
     group_table = bundle.get("groupTable", [])
     next_match  = bundle.get("nextMatch")
     player_data = bundle.get("playerUpdate")
@@ -30,7 +31,7 @@ def build_html(bundle: dict, sections: dict) -> str:
     player_html = _build_player_card(player_data, player) if player_data and player else ""
 
     # Next fixture HTML
-    fixture_html = _build_fixture_block(next_match, team, next_text)
+    fixture_html = _build_fixture_block(next_match, team, next_text, timezone)
 
     # Analysis paragraphs
     analysis_html = "".join(
@@ -186,14 +187,14 @@ def _build_player_card(player_data: str, player_name: str) -> str:
   </td></tr>"""
 
 
-def _build_fixture_block(next_match: dict, followed_team: str, next_text: str) -> str:
+def _build_fixture_block(next_match: dict, followed_team: str, next_text: str, timezone: str = "UTC") -> str:
     if not next_match:
         return ""
 
     home  = next_match.get("homeTeam", "")
     away  = next_match.get("awayTeam", "")
     kickoff_raw = next_match.get("kickoffTime", "")
-    kickoff = format_kickoff(kickoff_raw) if kickoff_raw else "Date TBC"
+    kickoff = format_kickoff(kickoff_raw, timezone) if kickoff_raw else "Date TBC"
 
     return f"""
   <tr><td style="padding:24px 32px 0 32px">

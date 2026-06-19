@@ -108,9 +108,11 @@ def parse_response(text: str) -> dict:
     return sections
 
 
-def format_kickoff(iso_string: str) -> str:
+def format_kickoff(iso_string: str, timezone: str = "UTC") -> str:
     try:
+        from zoneinfo import ZoneInfo
         dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-        return dt.strftime("%A %-d %B, %H:%M UTC")
+        dt_local = dt.astimezone(ZoneInfo(timezone))
+        return dt_local.strftime("%A %-d %B, %H:%M %Z")
     except Exception:
         return iso_string

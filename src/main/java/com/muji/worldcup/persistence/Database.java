@@ -84,6 +84,17 @@ public class Database {
                 )
                 """);
 
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS subscribers (
+                    email           TEXT PRIMARY KEY,
+                    followed_team   TEXT,
+                    followed_player TEXT,
+                    timezone        TEXT NOT NULL DEFAULT 'UTC',
+                    created_at      TEXT NOT NULL,
+                    active          INTEGER NOT NULL DEFAULT 1
+                )
+                """);
+
             // Add bio columns to existing installs that predate this schema version
             tryAddColumn(stmt, "players", "position", "TEXT");
             tryAddColumn(stmt, "players", "nationality", "TEXT");

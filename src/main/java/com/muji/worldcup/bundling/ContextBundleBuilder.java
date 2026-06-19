@@ -8,15 +8,27 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.List;
 
 public class ContextBundleBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(ContextBundleBuilder.class);
-    private static final DateTimeFormatter TIME_FMT =
-            DateTimeFormatter.ofPattern("HH:mm 'UTC'").withZone(ZoneId.of("UTC"));
-    private static final DateTimeFormatter DATE_FMT =
-            DateTimeFormatter.ofPattern("EEE d MMM").withZone(ZoneId.of("UTC"));
+    private static DateTimeFormatter timeFmt(ZoneId zone) {
+        return DateTimeFormatter.ofPattern("HH:mm z").withZone(zone);
+    }
+
+    private static DateTimeFormatter dateFmt(ZoneId zone) {
+        return DateTimeFormatter.ofPattern("EEE d MMM").withZone(zone);
+    }
+
+    private static ZoneId zoneFor(Subscriber subscriber) {
+        try {
+            return ZoneId.of(subscriber.timezone());
+        } catch (Exception e) {
+            return ZoneId.of("UTC");
+        }
+    }
 
     private final SqliteRepository repository;
 
@@ -28,9 +40,10 @@ public class ContextBundleBuilder {
         String matchDayRecap = buildMatchDayRecap(subscriber.followedTeam());
         String teamUpdate    = buildTeamUpdate(subscriber.followedTeam());
         String playerUpdate  = buildPlayerUpdate(subscriber.followedPlayer());
+        ZoneId zone          = zoneFor(subscriber);
         Match nextMatch      = findNextMatch(subscriber.followedTeam());
         Match lastResult     = findLastResult(subscriber.followedTeam());
-        String nextPreview   = formatNextMatch(subscriber.followedTeam(), nextMatch);
+        String nextPreview   = formatNextMatch(subscriber.followedTeam(), nextMatch, zone);
         List<GroupStanding> groupTable = buildGroupTable(subscriber.followedTeam());
 
         log.info("Built bundle for {}", subscriber.email());
@@ -132,7 +145,7 @@ public class ContextBundleBuilder {
                 .orElse(null);
     }
 
-    private String formatNextMatch(String teamName, Match next) {
+    private String formatNextMatch(String teamName, Match next, ZoneId zone) {
         if (teamName == null) return null;
         if (next == null) return "No upcoming match scheduled for " + teamName + ".";
 
@@ -141,8 +154,8 @@ public class ContextBundleBuilder {
 
         return String.format("%s %s %s — %s, %s",
                 teamName, venue, opponent,
-                DATE_FMT.format(next.kickoffTime()),
-                TIME_FMT.format(next.kickoffTime()));
+                dateFmt(zone).format(next.kickoffTime()),
+                timeFmt(zone).format(next.kickoffTime()));
     }
 
     private List<GroupStanding> buildGroupTable(String teamName) throws SQLException {

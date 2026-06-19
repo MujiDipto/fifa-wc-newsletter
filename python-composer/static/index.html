@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World Cup 2026 · Daily Newsletter</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: #0a0a0a;
+      color: #e5e5e5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: #777;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+
+    .form-card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 32px;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    input, select {
+      width: 100%;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      color: #e5e5e5;
+      font-size: 15px;
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23555' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+
+    select option { background: #1a1a1a; }
+
+    input:focus, select:focus { border-color: #444; }
+
+    input::placeholder { color: #444; }
+
+    select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .hint {
+      font-size: 12px;
+      color: #444;
+      margin-top: 6px;
+    }
+
+    button {
+      width: 100%;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 14px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.15s;
+    }
+
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .success {
+      display: none;
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    .success .icon { font-size: 40px; margin-bottom: 12px; }
+    .success h2 { font-size: 20px; color: #fff; margin-bottom: 8px; }
+    .success p { font-size: 14px; color: #666; }
+
+    .error-msg {
+      display: none;
+      font-size: 13px;
+      color: #e55;
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #1e1e1e;
+      margin: 24px 0;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #444;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="badge">⚽ FIFA World Cup 2026</div>
+  <h1>Your team.<br>Your player.<br>One email.</h1>
+  <p class="subtitle">A personalised daily newsletter covering match results, standings, and player stats — delivered every morning of the tournament.</p>
+
+  <div class="form-card">
+    <div id="form-section">
+      <div class="field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" placeholder="you@example.com" required>
+      </div>
+
+      <div class="field">
+        <label for="team">Favourite team</label>
+        <select id="team">
+          <option value="">Loading teams…</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="player">Favourite player <span style="color:#444;font-size:11px;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input type="text" id="player" placeholder="e.g. Messi, Pedri, Neymar">
+      </div>
+
+      <hr class="divider">
+
+      <div class="field">
+        <label for="timezone">Your timezone</label>
+        <select id="timezone"></select>
+        <div class="hint">Match times will be shown in your local time.</div>
+      </div>
+
+      <button id="submit-btn" onclick="handleSubmit()">Subscribe</button>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+
+    <div class="success" id="success-section">
+      <div class="icon">✓</div>
+      <h2>You're in.</h2>
+      <p>Your first newsletter will arrive tomorrow morning.</p>
+    </div>
+  </div>
+
+  <div class="footer">Free · No spam · Unsubscribe anytime</div>
+</div>
+
+<script>
+  const teamSelect = document.getElementById('team');
+  const tzSelect   = document.getElementById('timezone');
+  const submitBtn    = document.getElementById('submit-btn');
+  const errorMsg     = document.getElementById('error-msg');
+
+  // --- Load teams ---
+  async function loadTeams() {
+    try {
+      const res = await fetch('/api/teams');
+      const { teams } = await res.json();
+      teamSelect.innerHTML = '<option value="">Select your team</option>';
+      teams.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = t;
+        teamSelect.appendChild(opt);
+      });
+    } catch {
+      teamSelect.innerHTML = '<option value="">Failed to load — refresh page</option>';
+    }
+  }
+
+  // --- Populate timezones ---
+  const commonZones = [
+    ['UTC',                    'UTC'],
+    ['America/New_York',       'Eastern Time (ET)'],
+    ['America/Chicago',        'Central Time (CT)'],
+    ['America/Denver',         'Mountain Time (MT)'],
+    ['America/Los_Angeles',    'Pacific Time (PT)'],
+    ['America/Vancouver',      'Vancouver (PT)'],
+    ['America/Toronto',        'Toronto (ET)'],
+    ['America/Sao_Paulo',      'São Paulo (BRT)'],
+    ['America/Argentina/Buenos_Aires', 'Buenos Aires (ART)'],
+    ['America/Bogota',         'Bogotá (COT)'],
+    ['America/Mexico_City',    'Mexico City (CST)'],
+    ['Europe/London',          'London (GMT/BST)'],
+    ['Europe/Madrid',          'Madrid (CET/CEST)'],
+    ['Europe/Paris',           'Paris (CET/CEST)'],
+    ['Europe/Berlin',          'Berlin (CET/CEST)'],
+    ['Europe/Amsterdam',       'Amsterdam (CET/CEST)'],
+    ['Europe/Rome',            'Rome (CET/CEST)'],
+    ['Europe/Lisbon',          'Lisbon (WET/WEST)'],
+    ['Europe/Moscow',          'Moscow (MSK)'],
+    ['Africa/Cairo',           'Cairo (EET)'],
+    ['Africa/Johannesburg',    'Johannesburg (SAST)'],
+    ['Africa/Lagos',           'Lagos (WAT)'],
+    ['Asia/Riyadh',            'Riyadh (AST)'],
+    ['Asia/Dubai',             'Dubai (GST)'],
+    ['Asia/Karachi',           'Karachi (PKT)'],
+    ['Asia/Kolkata',           'Mumbai / Delhi (IST)'],
+    ['Asia/Dhaka',             'Dhaka (BST)'],
+    ['Asia/Bangkok',           'Bangkok (ICT)'],
+    ['Asia/Singapore',         'Singapore (SGT)'],
+    ['Asia/Tokyo',             'Tokyo (JST)'],
+    ['Asia/Seoul',             'Seoul (KST)'],
+    ['Asia/Shanghai',          'Beijing / Shanghai (CST)'],
+    ['Australia/Sydney',       'Sydney (AEST/AEDT)'],
+    ['Australia/Melbourne',    'Melbourne (AEST/AEDT)'],
+    ['Australia/Brisbane',     'Brisbane (AEST)'],
+    ['Pacific/Auckland',       'Auckland (NZST/NZDT)'],
+  ];
+
+  // Try to detect the user's timezone
+  const detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+  commonZones.forEach(([tz, label]) => {
+    const opt = document.createElement('option');
+    opt.value = tz;
+    opt.textContent = label;
+    if (tz === detected) opt.selected = true;
+    tzSelect.appendChild(opt);
+  });
+
+  // --- Submit ---
+  async function handleSubmit() {
+    errorMsg.style.display = 'none';
+    const email  = document.getElementById('email').value.trim();
+    const team   = teamSelect.value;
+    const player = document.getElementById('player').value.trim() || null;
+    const tz     = tzSelect.value;
+
+    if (!email || !email.includes('@')) {
+      showError('Please enter a valid email address.');
+      return;
+    }
+    if (!team) {
+      showError('Please select your favourite team.');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Subscribing…';
+
+    try {
+      const res = await fetch('/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, followed_team: team, followed_player: player, timezone: tz }),
+      });
+
+      if (!res.ok) {
+        const { detail } = await res.json().catch(() => ({}));
+        throw new Error(detail || 'Something went wrong.');
+      }
+
+      document.getElementById('form-section').style.display = 'none';
+      document.getElementById('success-section').style.display = 'block';
+    } catch (err) {
+      showError(err.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Subscribe';
+    }
+  }
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.style.display = 'block';
+  }
+
+  loadTeams();
+</script>
+</body>
+</html>
