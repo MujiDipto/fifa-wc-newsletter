@@ -60,7 +60,11 @@ public class FootballDataClient implements DataSource {
     }
 
     public List<Match> fetchScheduledMatches() throws Exception {
-        String url = BASE_URL + "/competitions/WC/matches?status=SCHEDULED";
+        // status=SCHEDULED not supported on free tier; fetch next 7 days by date range instead
+        LocalDate today = LocalDate.now();
+        String from = today.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        String to = today.plusDays(7).format(DateTimeFormatter.ISO_LOCAL_DATE);
+        String url = BASE_URL + "/competitions/WC/matches?dateFrom=" + from + "&dateTo=" + to;
         JsonNode root = get(url);
 
         List<Match> matches = new ArrayList<>();
