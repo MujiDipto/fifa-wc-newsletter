@@ -339,6 +339,62 @@ public class SqliteRepository {
         return names;
     }
 
+    // --- Elimination tracking ---
+
+    public boolean wasEliminationNotified(String team) throws SQLException {
+        String sql = "SELECT 1 FROM team_eliminations WHERE team = ?";
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, team);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public void markEliminationNotified(String team) throws SQLException {
+        String sql = """
+            INSERT INTO team_eliminations (team, notified_at)
+            VALUES (?, datetime('now'))
+            ON CONFLICT(team) DO NOTHING
+            """;
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, team);
+            ps.executeUpdate();
+            log.info("Marked elimination notified for {}", team);
+        }
+    }
+
+    public boolean hasPlayedMatches(String team) throws SQLException {
+        String sql = """
+            SELECT 1 FROM matches
+            WHERE (home_team = ? OR away_team = ?) AND status = 'FINISHED'
+            LIMIT 1
+            """;
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, team);
+            ps.setString(2, team);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public boolean hasUpcomingMatches(String team) throws SQLException {
+        String sql = """
+            SELECT 1 FROM matches
+            WHERE (home_team = ? OR away_team = ?)
+              AND (status = 'SCHEDULED' OR status = 'TIMED')
+            LIMIT 1
+            """;
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, team);
+            ps.setString(2, team);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     // --- News ---
 
     public void upsertNews(List<NewsItem> items) throws SQLException {

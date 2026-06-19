@@ -46,14 +46,17 @@ public class ContextBundleBuilder {
         String nextPreview   = formatNextMatch(subscriber.followedTeam(), nextMatch, zone);
         List<GroupStanding> groupTable = buildGroupTable(subscriber.followedTeam());
 
-        log.info("Built bundle for {}", subscriber.email());
+        ContextBundle.EliminationStatus eliminationStatus =
+                detectEliminationStatus(subscriber.followedTeam());
+
+        log.info("Built bundle for {} (elimination={})", subscriber.email(), eliminationStatus);
         return new ContextBundle(
                 subscriber,
                 matchDayRecap,
                 teamUpdate,
                 playerUpdate,
                 nextPreview,
-                ContextBundle.EliminationStatus.ACTIVE,
+                eliminationStatus,
                 groupTable,
                 nextMatch,
                 lastResult
@@ -166,6 +169,17 @@ public class ContextBundleBuilder {
 
         String groupName = teamStandings.get(0).group();
         return repository.findStandingsByGroup(groupName);
+    }
+
+    private ContextBundle.EliminationStatus detectEliminationStatus(String teamName) throws SQLException {
+        if (teamName == null) return ContextBundle.EliminationStatus.ACTIVE;
+        // A team is only considered eliminated once they've played matches but have none left scheduled.
+        if (!repository.hasPlayedMatches(teamName)) return ContextBundle.EliminationStatus.ACTIVE;
+        if (repository.hasUpcomingMatches(teamName)) return ContextBundle.EliminationStatus.ACTIVE;
+        // No upcoming matches — eliminated. Check if we've already sent the send-off.
+        if (repository.wasEliminationNotified(teamName)) return ContextBundle.EliminationStatus.ALREADY_HANDLED;
+        repository.markEliminationNotified(teamName);
+        return ContextBundle.EliminationStatus.JUST_ELIMINATED;
     }
 
     private String formatMatchResult(Match m) {

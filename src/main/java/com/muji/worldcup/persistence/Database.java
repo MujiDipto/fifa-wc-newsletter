@@ -95,6 +95,13 @@ public class Database {
                 )
                 """);
 
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS team_eliminations (
+                    team         TEXT PRIMARY KEY,
+                    notified_at  TEXT NOT NULL
+                )
+                """);
+
             // Add bio columns to existing installs that predate this schema version
             tryAddColumn(stmt, "players", "position", "TEXT");
             tryAddColumn(stmt, "players", "nationality", "TEXT");

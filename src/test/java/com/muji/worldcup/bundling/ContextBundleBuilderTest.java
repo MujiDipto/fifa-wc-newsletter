@@ -124,6 +124,43 @@ class ContextBundleBuilderTest {
     }
 
     @Test
+    void eliminationStatusIsJustEliminatedOnFirstDetection() throws SQLException {
+        // Team has played but has no upcoming matches
+        repo.upsertMatches(List.of(new Match(
+                "1", "Argentina", "France", 2, 1,
+                "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src")));
+
+        Subscriber sub = new Subscriber("a@example.com", "Argentina", null);
+        ContextBundle bundle = builder.build(sub);
+        assertEquals(ContextBundle.EliminationStatus.JUST_ELIMINATED, bundle.eliminationStatus());
+    }
+
+    @Test
+    void eliminationStatusIsAlreadyHandledOnSecondRun() throws SQLException {
+        repo.upsertMatches(List.of(new Match(
+                "1", "Argentina", "France", 2, 1,
+                "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src")));
+
+        Subscriber sub = new Subscriber("a@example.com", "Argentina", null);
+        builder.build(sub); // first run — marks notified
+        ContextBundle second = builder.build(sub);
+        assertEquals(ContextBundle.EliminationStatus.ALREADY_HANDLED, second.eliminationStatus());
+    }
+
+    @Test
+    void eliminationStatusIsActiveWhenUpcomingMatchExists() throws SQLException {
+        repo.upsertMatches(List.of(
+                new Match("1", "Argentina", "France", 2, 1,
+                        "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src"),
+                new Match("2", "Argentina", "Brazil", null, null,
+                        "SCHEDULED", "Group J", Instant.now().plusSeconds(7200), "src")));
+
+        Subscriber sub = new Subscriber("a@example.com", "Argentina", null);
+        ContextBundle bundle = builder.build(sub);
+        assertEquals(ContextBundle.EliminationStatus.ACTIVE, bundle.eliminationStatus());
+    }
+
+    @Test
     void nullTeamAndPlayerProducesNullSections() throws SQLException {
         Subscriber sub = new Subscriber("a@example.com", null, null);
         ContextBundle bundle = builder.build(sub);
