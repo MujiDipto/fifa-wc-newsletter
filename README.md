@@ -1,57 +1,42 @@
-# ⚽ World Cup 2026 Daily Newsletter
+# World Cup 2026 Daily Newsletter
 
-**Your team. Your player. One email. Every morning.**
+**Your team. One email. Every morning.**
 
-The World Cup only comes around every four years. Don't miss a moment of it — wake up each day to a personalized recap of everything that happened, written just for you.
+The World Cup only comes around every four years. Don't miss a moment of it — wake up each day to a personalised recap of everything that happened, written just for you.
 
 ---
 
 ## What You Get
 
-Every morning of the tournament, you receive a single email built around the team and player you care about most.
+Every morning of the tournament, one email built around the team you care about.
 
-**Yesterday's results.** How did your team play? Full match recap with the key moments.
+**Yesterday's result.** Full match recap with the scoreline and what it means for your team's campaign.
 
-**Your player's performance.** Goals, assists, match rating, and a rundown of how they showed up on the pitch.
+**Where your team stands.** Live group standings with goal difference, points, and what they need to advance.
 
-**Where your team stands.** Live group standings, goal difference, and what they need to advance.
+**What the media is saying.** A second read on the day — what journalists and pundits are actually writing about your team right now.
 
-**What's coming next.** Fixtures preview so you know exactly when to set your alarm.
+**What's coming next.** Fixture preview with kickoff time in your local timezone.
 
-**Tournament news.** The headlines worth knowing from across the competition.
-
-If your team gets knocked out, you'll get one final send-off email — then your newsletter quietly shifts to cover the rest of the tournament for you.
-
----
-
-## How It Works
-
-You tell us who you support. We handle everything else.
-
-Each day, the latest match data, standings, and player stats are pulled from multiple live sources. An AI then writes you a fresh, natural-sounding email — not a stats dump, but something worth reading over your morning coffee.
-
-No accounts. No app to download. Just your inbox.
+If your team gets knocked out, you'll receive one final send-off email — then your newsletter stops quietly.
 
 ---
 
 ## Sign Up
 
-Add yourself to [`config/subscribers.yaml`](config/subscribers.yaml):
+Visit the signup page, pick your team and timezone, and you're done.
 
-```yaml
-subscribers:
-  - email: you@example.com
-    team: Argentina
-    player: Messi
-```
+No accounts. No app. Just your inbox.
 
-That's it. You can follow a team, a player, or both.
+---
+
+## How It Works
+
+Each morning, live match data, standings, and recent media coverage are pulled from multiple sources. An AI then writes a fresh, natural-sounding email — not a stats dump, but something worth reading over coffee.
 
 ---
 
 ## Self-Hosting
-
-Want to run your own instance for friends and family? It takes about five minutes to set up.
 
 **Prerequisites:** Java 21+, Python 3.11+, Maven, an SMTP account
 
@@ -63,7 +48,7 @@ cd fifa-wc-newsletter
 cp .env.example .env
 ```
 
-Fill in `.env` with your credentials:
+Fill in `.env`:
 
 ```env
 FOOTBALL_DATA_API_TOKEN=   # free at football-data.org
@@ -75,23 +60,23 @@ SMTP_USERNAME=
 SMTP_PASSWORD=
 ```
 
-**2. Add your subscribers** to `config/subscribers.yaml`
-
-**3. Start the AI composer**
+**2. Start the AI composer**
 
 ```bash
 cd python-composer
+python3.11 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app
+uvicorn main:app --port 8000
 ```
 
-**4. Run the pipeline**
+**3. Run the pipeline**
 
 ```bash
-mvn compile && mvn exec:java -Dexec.mainClass=com.muji.worldcup.Main
+mvn package -DskipTests
+java -jar target/worldcup-newsletter-1.0-SNAPSHOT.jar
 ```
 
-Schedule it daily and you're done.
+Schedule step 3 daily with cron and you're done.
 
 ---
 
@@ -101,9 +86,10 @@ Schedule it daily and you're done.
 |---|---|
 | Pipeline | Java 21, Maven |
 | AI composition | Python 3.11, FastAPI, Llama 3.3 70B via Groq |
-| Data | football-data.org, ESPN, TheSportsDB |
+| Data sources | football-data.org, ESPN, TheSportsDB, The Guardian |
 | Storage | SQLite |
-| Email | Jakarta Mail |
+| Email delivery | Jakarta Mail, Gmail SMTP |
+| Hosting | Oracle Cloud (Always Free) |
 
 ---
 
