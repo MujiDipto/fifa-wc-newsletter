@@ -68,6 +68,7 @@ Fill in `.env` with your credentials:
 ```env
 FOOTBALL_DATA_API_TOKEN=   # free at football-data.org
 GROQ_API_KEY=              # free at console.groq.com
+GUARDIAN_API_KEY=          # free at open-platform.theguardian.com
 SMTP_HOST=
 SMTP_PORT=
 SMTP_USERNAME=

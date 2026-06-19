@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 
-def build_prompt(bundle: dict) -> str:
+def build_prompt(bundle: dict, coverage: list = None) -> str:
     subscriber   = bundle.get("subscriber", {})
     team         = subscriber.get("followedTeam")
     recap        = bundle.get("matchDayRecapText")
@@ -30,6 +30,15 @@ def build_prompt(bundle: dict) -> str:
 
     context_block = "\n\n".join(sections) if sections else "No match data available."
 
+    coverage_block = ""
+    if coverage:
+        lines = []
+        for i, art in enumerate(coverage, 1):
+            lines.append(f"{i}. {art['title']}")
+            if art.get("summary"):
+                lines.append(f"   {art['summary']}")
+        coverage_block = "\n\nMEDIA COVERAGE (recent Guardian articles):\n" + "\n".join(lines)
+
     elimination_note = ""
     if status == "JUST_ELIMINATED":
         elimination_note = f"\nIMPORTANT: {team} has just been eliminated. Write a respectful send-off in the ANALYSIS section.\n"
@@ -45,7 +54,7 @@ Tone: professional, analytical, journal-like. No filler phrases, no exclamation 
 CRITICAL RULE: You must only state facts that appear in the DATA section below. Do not recall, infer, or invent any match results, scorelines, opponents, dates, or statistics from your training knowledge. If a piece of information is not in the DATA section, do not mention it. Stating a fabricated result would be a serious factual error.
 {elimination_note}
 --- DATA ---
-{context_block}
+{context_block}{coverage_block}
 --- END DATA ---
 
 Respond with exactly four labelled sections. Do not add any other text.
@@ -57,7 +66,13 @@ OPENING:
 <One sharp sentence (max 20 words) that captures the day's story for this subscriber. If no match was played, open on what the rest day means for the team's position or what to watch next.>
 
 ANALYSIS:
-<Two or three tight paragraphs. If a match was played, analyse what happened and what it means. If no match, briefly situate the team in the tournament — form, what they need, who they face next — without padding it out. Draw on the player data if available. No bullet points. No markdown.>
+<Exactly two paragraphs, separated by a blank line.
+
+Paragraph 1: The football — what happened on the pitch, what the result means, where the team stands. Factual, analytical. Only use information from DATA above.
+
+Paragraph 2: The conversation — draw on the MEDIA COVERAGE section to reflect what journalists and pundits are talking about. The articles may cover the broader World Cup rather than {team} specifically. Use them to situate {team} inside the wider tournament narrative: what themes are dominating coverage right now, what the football world is reacting to, what the mood of the tournament is. Pull in anything directly relevant to {team} where it exists. Make this paragraph feel alive and opinionated — like reading a quality sports column, not a summary.
+
+No bullet points. No markdown. No headers within the section.>
 
 NEXT_MATCH:
 <One concise paragraph about the upcoming fixture. Name the opponent, note their group position and what the match means for both sides. If no fixture data is available write: No fixture data available.>

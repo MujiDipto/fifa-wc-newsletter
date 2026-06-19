@@ -2,6 +2,7 @@ import os
 from groq import Groq
 from prompts import build_prompt, parse_response
 from email_builder import build_html
+from guardian_client import fetch_team_coverage
 
 _client = None
 
@@ -17,13 +18,16 @@ def _get_client() -> Groq:
 
 
 def compose_newsletter(bundle: dict) -> dict:
-    prompt = build_prompt(bundle)
+    team = bundle.get("subscriber", {}).get("followedTeam")
+    coverage = fetch_team_coverage(team) if team else []
+
+    prompt = build_prompt(bundle, coverage)
 
     response = _get_client().chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
-        max_tokens=1024,
+        max_tokens=1500,
     )
 
     raw_text = response.choices[0].message.content
