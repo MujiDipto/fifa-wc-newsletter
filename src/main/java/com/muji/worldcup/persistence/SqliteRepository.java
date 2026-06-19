@@ -273,27 +273,25 @@ public class SqliteRepository {
 
     public void upsertSubscriber(com.muji.worldcup.model.Subscriber s) throws SQLException {
         String sql = """
-            INSERT INTO subscribers (email, followed_team, followed_player, timezone, created_at, active)
-            VALUES (?, ?, ?, ?, ?, 1)
+            INSERT INTO subscribers (email, followed_team, timezone, created_at, active)
+            VALUES (?, ?, ?, ?, 1)
             ON CONFLICT(email) DO UPDATE SET
-                followed_team   = excluded.followed_team,
-                followed_player = excluded.followed_player,
-                timezone        = excluded.timezone,
-                active          = 1
+                followed_team = excluded.followed_team,
+                timezone      = excluded.timezone,
+                active        = 1
             """;
         try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, s.email());
             ps.setString(2, s.followedTeam());
-            ps.setString(3, s.followedPlayer());
-            ps.setString(4, s.timezone());
-            ps.setString(5, java.time.Instant.now().toString());
+            ps.setString(3, s.timezone());
+            ps.setString(4, java.time.Instant.now().toString());
             ps.executeUpdate();
         }
     }
 
     public List<com.muji.worldcup.model.Subscriber> getActiveSubscribers() throws SQLException {
         String sql = """
-            SELECT email, followed_team, followed_player, timezone
+            SELECT email, followed_team, timezone
             FROM subscribers
             WHERE active = 1
             ORDER BY created_at ASC
@@ -305,7 +303,6 @@ public class SqliteRepository {
                     results.add(new com.muji.worldcup.model.Subscriber(
                             rs.getString("email"),
                             rs.getString("followed_team"),
-                            rs.getString("followed_player"),
                             rs.getString("timezone")
                     ));
                 }
@@ -323,20 +320,6 @@ public class SqliteRepository {
             }
         }
         return teams;
-    }
-
-    public List<String> getPlayersByTeam(String team) throws SQLException {
-        String sql = """
-            SELECT name FROM players WHERE team = ? ORDER BY goals DESC, name ASC
-            """;
-        List<String> names = new ArrayList<>();
-        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, team);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) names.add(rs.getString("name"));
-            }
-        }
-        return names;
     }
 
     // --- Elimination tracking ---

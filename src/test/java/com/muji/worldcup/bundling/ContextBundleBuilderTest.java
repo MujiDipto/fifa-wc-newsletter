@@ -29,7 +29,7 @@ class ContextBundleBuilderTest {
 
     @Test
     void buildsActiveStatusByDefault() throws SQLException {
-        Subscriber sub = new Subscriber("a@example.com", null, null);
+        Subscriber sub = new Subscriber("a@example.com", null);
         ContextBundle bundle = builder.build(sub);
         assertEquals(ContextBundle.EliminationStatus.ACTIVE, bundle.eliminationStatus());
     }
@@ -39,7 +39,7 @@ class ContextBundleBuilderTest {
         repo.upsertStandings(List.of(
                 new GroupStanding("Group J", "Argentina", 1, 1, 0, 0, 3, 3, 1)));
 
-        Subscriber sub = new Subscriber("a@example.com", "Argentina", null);
+        Subscriber sub = new Subscriber("a@example.com", "Argentina");
         ContextBundle bundle = builder.build(sub);
 
         assertNotNull(bundle.teamUpdate());
@@ -49,7 +49,7 @@ class ContextBundleBuilderTest {
 
     @Test
     void teamUpdateFallbackWhenNoStanding() throws SQLException {
-        Subscriber sub = new Subscriber("a@example.com", "Narnia FC", null);
+        Subscriber sub = new Subscriber("a@example.com", "Narnia FC");
         ContextBundle bundle = builder.build(sub);
         assertTrue(bundle.teamUpdate().contains("No standing data"));
     }
@@ -60,7 +60,7 @@ class ContextBundleBuilderTest {
                 "1", "Argentina", "France", 2, 1,
                 "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src")));
 
-        Subscriber sub = new Subscriber("a@example.com", "Argentina", null);
+        Subscriber sub = new Subscriber("a@example.com", "Argentina");
         ContextBundle bundle = builder.build(sub);
 
         assertTrue(bundle.matchDayRecapText().contains("Argentina"));
@@ -69,38 +69,9 @@ class ContextBundleBuilderTest {
 
     @Test
     void matchRecapFallbackWhenNoMatchToday() throws SQLException {
-        Subscriber sub = new Subscriber("a@example.com", "Spain", null);
+        Subscriber sub = new Subscriber("a@example.com", "Spain");
         ContextBundle bundle = builder.build(sub);
         assertTrue(bundle.matchDayRecapText().contains("have not played"));
-    }
-
-    @Test
-    void playerUpdatePopulatedWhenPlayerExists() throws SQLException {
-        repo.upsertPlayers(List.of(
-                new Player("Lionel Messi", "Argentina", 3, 1, 2,
-                        "2 goals vs France", "Right Winger", "Argentine", null)));
-
-        Subscriber sub = new Subscriber("a@example.com", "Argentina", "Messi");
-        ContextBundle bundle = builder.build(sub);
-
-        assertNotNull(bundle.playerUpdate());
-        assertTrue(bundle.playerUpdate().contains("Lionel Messi"));
-        assertTrue(bundle.playerUpdate().contains("Goals: 3"));
-        assertTrue(bundle.playerUpdate().contains("Right Winger"));
-    }
-
-    @Test
-    void playerUpdateFallbackWhenPlayerNotFound() throws SQLException {
-        Subscriber sub = new Subscriber("a@example.com", null, "Unknown Player");
-        ContextBundle bundle = builder.build(sub);
-        assertTrue(bundle.playerUpdate().contains("No stats found"));
-    }
-
-    @Test
-    void playerUpdateNullWhenNoPlayerFollowed() throws SQLException {
-        Subscriber sub = new Subscriber("a@example.com", "Spain", null);
-        ContextBundle bundle = builder.build(sub);
-        assertNull(bundle.playerUpdate());
     }
 
     @Test
@@ -109,7 +80,7 @@ class ContextBundleBuilderTest {
                 "99", "Argentina", "Brazil", null, null,
                 "TIMED", "Group J", Instant.now().plusSeconds(7200), "src")));
 
-        Subscriber sub = new Subscriber("a@example.com", "Argentina", null);
+        Subscriber sub = new Subscriber("a@example.com", "Argentina");
         ContextBundle bundle = builder.build(sub);
 
         assertTrue(bundle.nextMatchDayPreview().contains("Argentina"));
@@ -118,19 +89,18 @@ class ContextBundleBuilderTest {
 
     @Test
     void nextMatchFallbackWhenNoUpcoming() throws SQLException {
-        Subscriber sub = new Subscriber("a@example.com", "Iceland", null);
+        Subscriber sub = new Subscriber("a@example.com", "Iceland");
         ContextBundle bundle = builder.build(sub);
         assertTrue(bundle.nextMatchDayPreview().contains("No upcoming"));
     }
 
     @Test
     void eliminationStatusIsJustEliminatedOnFirstDetection() throws SQLException {
-        // Team has played but has no upcoming matches
         repo.upsertMatches(List.of(new Match(
                 "1", "Argentina", "France", 2, 1,
                 "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src")));
 
-        Subscriber sub = new Subscriber("a@example.com", "Argentina", null);
+        Subscriber sub = new Subscriber("a@example.com", "Argentina");
         ContextBundle bundle = builder.build(sub);
         assertEquals(ContextBundle.EliminationStatus.JUST_ELIMINATED, bundle.eliminationStatus());
     }
@@ -141,8 +111,8 @@ class ContextBundleBuilderTest {
                 "1", "Argentina", "France", 2, 1,
                 "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src")));
 
-        Subscriber sub = new Subscriber("a@example.com", "Argentina", null);
-        builder.build(sub); // first run — marks notified
+        Subscriber sub = new Subscriber("a@example.com", "Argentina");
+        builder.build(sub);
         ContextBundle second = builder.build(sub);
         assertEquals(ContextBundle.EliminationStatus.ALREADY_HANDLED, second.eliminationStatus());
     }
@@ -155,17 +125,16 @@ class ContextBundleBuilderTest {
                 new Match("2", "Argentina", "Brazil", null, null,
                         "SCHEDULED", "Group J", Instant.now().plusSeconds(7200), "src")));
 
-        Subscriber sub = new Subscriber("a@example.com", "Argentina", null);
+        Subscriber sub = new Subscriber("a@example.com", "Argentina");
         ContextBundle bundle = builder.build(sub);
         assertEquals(ContextBundle.EliminationStatus.ACTIVE, bundle.eliminationStatus());
     }
 
     @Test
-    void nullTeamAndPlayerProducesNullSections() throws SQLException {
-        Subscriber sub = new Subscriber("a@example.com", null, null);
+    void nullTeamProducesNullSections() throws SQLException {
+        Subscriber sub = new Subscriber("a@example.com", null);
         ContextBundle bundle = builder.build(sub);
         assertNull(bundle.teamUpdate());
-        assertNull(bundle.playerUpdate());
         assertNull(bundle.matchDayRecapText());
         assertNull(bundle.nextMatchDayPreview());
     }

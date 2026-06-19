@@ -1,34 +1,44 @@
-"""Assembles the HTML email from Gemini's text sections + structured bundle data."""
+"""Assembles the HTML email from Groq's text sections + structured bundle data."""
 
 from prompts import format_kickoff
+
+_TEAM_FLAGS = {
+    "Argentina": "🇦🇷", "Australia": "🇦🇺", "Austria": "🇦🇹", "Belgium": "🇧🇪",
+    "Bolivia": "🇧🇴", "Brazil": "🇧🇷", "Canada": "🇨🇦", "Chile": "🇨🇱",
+    "Colombia": "🇨🇴", "Costa Rica": "🇨🇷", "Croatia": "🇭🇷", "Czechia": "🇨🇿",
+    "DR Congo": "🇨🇩", "Congo DR": "🇨🇩", "Ecuador": "🇪🇨", "Egypt": "🇪🇬",
+    "England": "🏴󠁧󠁢󠁥󠁮󠁧󁿢", "France": "🇫🇷", "Germany": "🇩🇪", "Ghana": "🇬🇭",
+    "Honduras": "🇭🇳", "Hungary": "🇭🇺", "Indonesia": "🇮🇩", "Iraq": "🇮🇶",
+    "Japan": "🇯🇵", "Kenya": "🇰🇪", "Mali": "🇲🇱", "Mexico": "🇲🇽",
+    "Morocco": "🇲🇦", "Netherlands": "🇳🇱", "New Zealand": "🇳🇿", "Nigeria": "🇳🇬",
+    "Norway": "🇳🇴", "Panama": "🇵🇦", "Paraguay": "🇵🇾", "Peru": "🇵🇪",
+    "Portugal": "🇵🇹", "Qatar": "🇶🇦", "Saudi Arabia": "🇸🇦", "Senegal": "🇸🇳",
+    "Serbia": "🇷🇸", "Slovenia": "🇸🇮", "South Korea": "🇰🇷", "Spain": "🇪🇸",
+    "Switzerland": "🇨🇭", "Tanzania": "🇹🇿", "Turkey": "🇹🇷",
+    "United States": "🇺🇸", "Uruguay": "🇺🇾", "Venezuela": "🇻🇪",
+    "Algeria": "🇩🇿", "Bosnia-Herzegovina": "🇧🇦", "Cape Verde Islands": "🇨🇻",
+    "Curaçao": "🇨🇼", "Cuba": "🇨🇺", "Jamaica": "🇯🇲", "Sweden": "🇸🇪",
+    "Ukraine": "🇺🇦", "Zimbabwe": "🇿🇼",
+}
 
 
 def build_html(bundle: dict, sections: dict) -> str:
     subscriber  = bundle.get("subscriber", {})
     team        = subscriber.get("followedTeam")
-    player      = subscriber.get("followedPlayer")
     timezone    = subscriber.get("timezone", "UTC")
     group_table = bundle.get("groupTable", [])
     next_match  = bundle.get("nextMatch")
-    player_data = bundle.get("playerUpdate")
 
     opening   = sections.get("opening", "")
     analysis  = sections.get("analysis", "")
     next_text = sections.get("next_match", "")
 
-    # Header line
-    header_parts = []
-    if team:
-        header_parts.append(team)
-    if player:
-        header_parts.append(player)
-    header_label = " · ".join(header_parts) if header_parts else "World Cup 2026"
+    # Header: "🇫🇷 France" or fallback
+    flag = _TEAM_FLAGS.get(team, "⚽")
+    header_label = f"{flag} {team}" if team else "World Cup 2026"
 
     # Standings table HTML
     standings_html = _build_standings_table(group_table, team)
-
-    # Player card HTML
-    player_html = _build_player_card(player_data, player) if player_data and player else ""
 
     # Next fixture HTML
     fixture_html = _build_fixture_block(next_match, team, next_text, timezone)
@@ -80,14 +90,12 @@ def build_html(bundle: dict, sections: dict) -> str:
 
   {standings_html}
 
-  {player_html}
-
   {fixture_html}
 
   <!-- Footer -->
   <tr>
     <td style="padding:28px 32px;border-top:1px solid #eee;margin-top:8px">
-      <p style="margin:0;font-size:12px;color:#aaa">World Cup Desk &nbsp;·&nbsp; FIFA World Cup 2026</p>
+      <p style="margin:0;font-size:12px;color:#aaa">World Cup Desk &nbsp;&middot;&nbsp; &#x270D;&#xFE0F; Muji (&amp; Claude)</p>
     </td>
   </tr>
 
@@ -142,47 +150,6 @@ def _build_standings_table(group_table: list, followed_team: str) -> str:
         <th style="padding:8px 12px;font-size:11px;color:#888;font-weight:500;text-align:center">Pts</th>
       </tr>
       {rows_html}
-    </table>
-  </td></tr>"""
-
-
-def _build_player_card(player_data: str, player_name: str) -> str:
-    if not player_data:
-        return ""
-
-    # Parse key stats from the text block the Java side assembled
-    goals, assists, apps = "—", "—", "—"
-    lines = player_data.splitlines()
-    for line in lines:
-        if "Goals:" in line:
-            parts = line.split("|")
-            for p in parts:
-                p = p.strip()
-                if p.startswith("Goals:"):
-                    goals = p.replace("Goals:", "").strip()
-                elif p.startswith("Assists:"):
-                    assists = p.replace("Assists:", "").strip()
-                elif p.startswith("Appearances:"):
-                    apps = p.replace("Appearances:", "").strip()
-
-    return f"""
-  <tr><td style="padding:24px 32px 0 32px">
-    <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:14px">{player_name}</div>
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #eee;border-radius:6px;overflow:hidden">
-      <tr style="background:#fafafa">
-        <td style="padding:14px 20px;text-align:center;border-right:1px solid #eee">
-          <div style="font-size:24px;font-weight:700;color:#111">{goals}</div>
-          <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:4px">Goals</div>
-        </td>
-        <td style="padding:14px 20px;text-align:center;border-right:1px solid #eee">
-          <div style="font-size:24px;font-weight:700;color:#111">{assists}</div>
-          <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:4px">Assists</div>
-        </td>
-        <td style="padding:14px 20px;text-align:center">
-          <div style="font-size:24px;font-weight:700;color:#111">{apps}</div>
-          <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:4px">Appearances</div>
-        </td>
-      </tr>
     </table>
   </td></tr>"""
 

@@ -172,11 +172,6 @@
         </select>
       </div>
 
-      <div class="field">
-        <label for="player">Favourite player <span style="color:#444;font-size:11px;text-transform:none;letter-spacing:0">(optional)</span></label>
-        <input type="text" id="player" placeholder="e.g. Messi, Pedri, Neymar">
-      </div>
-
       <hr class="divider">
 
       <div class="field">
@@ -277,8 +272,7 @@
     errorMsg.style.display = 'none';
     const email  = document.getElementById('email').value.trim();
     const team   = teamSelect.value;
-    const player = document.getElementById('player').value.trim() || null;
-    const tz     = tzSelect.value;
+    const tz = tzSelect.value;
 
     if (!email || !email.includes('@')) {
       showError('Please enter a valid email address.');
@@ -296,7 +290,7 @@
       const res = await fetch('/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, followed_team: team, followed_player: player, timezone: tz }),
+        body: JSON.stringify({ email, followed_team: team, timezone: tz }),
       });
 
       if (!res.ok) {

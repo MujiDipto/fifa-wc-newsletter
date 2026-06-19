@@ -2,15 +2,13 @@ from datetime import datetime, timezone
 
 
 def build_prompt(bundle: dict) -> str:
-    subscriber    = bundle.get("subscriber", {})
-    team          = subscriber.get("followedTeam")
-    player        = subscriber.get("followedPlayer")
-    recap         = bundle.get("matchDayRecapText")
-    team_update   = bundle.get("teamUpdate")
-    player_update = bundle.get("playerUpdate")
-    next_preview  = bundle.get("nextMatchDayPreview")
-    status        = bundle.get("eliminationStatus", "ACTIVE")
-    next_match    = bundle.get("nextMatch")
+    subscriber   = bundle.get("subscriber", {})
+    team         = subscriber.get("followedTeam")
+    recap        = bundle.get("matchDayRecapText")
+    team_update  = bundle.get("teamUpdate")
+    next_preview = bundle.get("nextMatchDayPreview")
+    status       = bundle.get("eliminationStatus", "ACTIVE")
+    next_match   = bundle.get("nextMatch")
 
     last_result = bundle.get("lastResult")
 
@@ -27,14 +25,10 @@ def build_prompt(bundle: dict) -> str:
         )
     if team_update:
         sections.append(f"TEAM STANDING:\n{team_update}")
-    if player_update:
-        sections.append(f"PLAYER STATS:\n{player_update}")
     if next_preview:
         sections.append(f"NEXT FIXTURE:\n{next_preview}")
 
     context_block = "\n\n".join(sections) if sections else "No match data available."
-
-    match_played = recap and "did not play" not in recap
 
     elimination_note = ""
     if status == "JUST_ELIMINATED":
@@ -42,12 +36,7 @@ def build_prompt(bundle: dict) -> str:
     elif status == "ALREADY_HANDLED":
         elimination_note = f"\nNOTE: {team} is eliminated. Omit the ANALYSIS section entirely.\n"
 
-    following = []
-    if team:
-        following.append(f"team: {team}")
-    if player:
-        following.append(f"player: {player}")
-    following_line = ", ".join(following) if following else "the World Cup"
+    following_line = f"team: {team}" if team else "the World Cup"
 
     return f"""You are writing a daily World Cup 2026 newsletter for a reader following {following_line}.
 

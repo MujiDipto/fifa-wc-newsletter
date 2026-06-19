@@ -1,8 +1,8 @@
 package com.muji.worldcup.model;
 
-public record Subscriber(String email, String followedTeam, String followedPlayer, String timezone) {
+public record Subscriber(String email, String followedTeam, String timezone) {
 
-    public Subscriber(String email, String followedTeam, String followedPlayer) {
-        this(email, followedTeam, followedPlayer, "UTC");
+    public Subscriber(String email, String followedTeam) {
+        this(email, followedTeam, "UTC");
     }
 }

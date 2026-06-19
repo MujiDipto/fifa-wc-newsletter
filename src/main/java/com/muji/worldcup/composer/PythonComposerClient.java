@@ -94,14 +94,12 @@ public class PythonComposerClient {
         var node = mapper.createObjectNode();
 
         var subNode = node.putObject("subscriber");
-        subNode.put("email",          subscriber.email());
-        subNode.put("followedTeam",   subscriber.followedTeam());
-        subNode.put("followedPlayer", subscriber.followedPlayer());
-        subNode.put("timezone",       subscriber.timezone());
+        subNode.put("email",        subscriber.email());
+        subNode.put("followedTeam", subscriber.followedTeam());
+        subNode.put("timezone",     subscriber.timezone());
 
         node.put("matchDayRecapText",   bundle.matchDayRecapText());
         node.put("teamUpdate",          bundle.teamUpdate());
-        node.put("playerUpdate",        bundle.playerUpdate());
         node.put("nextMatchDayPreview", bundle.nextMatchDayPreview());
         node.put("eliminationStatus",   bundle.eliminationStatus().name());
 

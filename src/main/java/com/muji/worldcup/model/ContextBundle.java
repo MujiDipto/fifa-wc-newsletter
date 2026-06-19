@@ -6,12 +6,11 @@ public record ContextBundle(
         Subscriber subscriber,
         String matchDayRecapText,
         String teamUpdate,
-        String playerUpdate,
         String nextMatchDayPreview,
         EliminationStatus eliminationStatus,
         List<GroupStanding> groupTable,
         Match nextMatch,
-        Match lastResult   // most recent FINISHED match for the followed team (may be null)
+        Match lastResult
 ) {
     public enum EliminationStatus {
         ACTIVE,

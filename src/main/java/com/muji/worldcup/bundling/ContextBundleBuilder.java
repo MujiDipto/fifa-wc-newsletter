@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.TextStyle;
 import java.util.List;
 
 public class ContextBundleBuilder {
@@ -39,7 +38,6 @@ public class ContextBundleBuilder {
     public ContextBundle build(Subscriber subscriber) throws SQLException {
         String matchDayRecap = buildMatchDayRecap(subscriber.followedTeam());
         String teamUpdate    = buildTeamUpdate(subscriber.followedTeam());
-        String playerUpdate  = buildPlayerUpdate(subscriber.followedPlayer());
         ZoneId zone          = zoneFor(subscriber);
         Match nextMatch      = findNextMatch(subscriber.followedTeam());
         Match lastResult     = findLastResult(subscriber.followedTeam());
@@ -54,7 +52,6 @@ public class ContextBundleBuilder {
                 subscriber,
                 matchDayRecap,
                 teamUpdate,
-                playerUpdate,
                 nextPreview,
                 eliminationStatus,
                 groupTable,
@@ -97,38 +94,6 @@ public class ContextBundleBuilder {
                 s.played(), s.won(), s.drawn(), s.lost(),
                 s.goalDifference(), s.points(), s.position()
         );
-    }
-
-    private String buildPlayerUpdate(String playerName) throws SQLException {
-        if (playerName == null) return null;
-
-        Player player = repository.findPlayer(playerName);
-        if (player == null) {
-            return "No stats found for " + playerName + " yet.";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(player.name())
-          .append(" (").append(player.team()).append(")");
-
-        if (player.position() != null)    sb.append(" — ").append(player.position());
-        if (player.nationality() != null) sb.append(", ").append(player.nationality());
-
-        sb.append("\n");
-        sb.append(String.format("Goals: %d | Assists: %d | Appearances: %d",
-                player.goals(), player.assists(), player.appearances()));
-
-        if (player.lastMatchSummary() != null) {
-            sb.append("\nLast match: ").append(player.lastMatchSummary());
-        }
-        if (player.bio() != null && !player.bio().isBlank()) {
-            String bio = player.bio().length() > 300
-                    ? player.bio().substring(0, 300) + "…"
-                    : player.bio();
-            sb.append("\nBackground: ").append(bio);
-        }
-
-        return sb.toString();
     }
 
     private Match findLastResult(String teamName) throws SQLException {

@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
+
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -58,8 +59,6 @@ public class Main {
         // --- Bundling ---
         Set<String> subscribedTeams = subscribers.stream()
                 .map(Subscriber::followedTeam).filter(t -> t != null).collect(Collectors.toSet());
-        Set<String> subscribedPlayers = subscribers.stream()
-                .map(Subscriber::followedPlayer).filter(p -> p != null).collect(Collectors.toSet());
 
         PrioritisedJobScheduler scheduler = new PrioritisedJobScheduler(4);
         ContextBundleBuilder bundleBuilder = new ContextBundleBuilder(repository);
@@ -68,8 +67,7 @@ public class Main {
 
         List<ContextBundle> bundles = bundleFanOut.process(subscribers, subscriber -> {
             PrioritisedJobScheduler.Priority priority =
-                    subscribedTeams.contains(subscriber.followedTeam()) ||
-                    subscribedPlayers.contains(subscriber.followedPlayer())
+                    subscribedTeams.contains(subscriber.followedTeam())
                     ? PrioritisedJobScheduler.Priority.HIGH
                     : PrioritisedJobScheduler.Priority.NORMAL;
             Future<ContextBundle> f = scheduler.submit(() -> bundleBuilder.build(subscriber), priority);

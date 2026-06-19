@@ -72,7 +72,6 @@ async def compose(request: ComposeRequest):
 class SubscribeRequest(BaseModel):
     email: str
     followed_team: Optional[str] = None
-    followed_player: Optional[str] = None
     timezone: str = "UTC"
 
 
@@ -83,14 +82,13 @@ async def subscribe(req: SubscribeRequest):
     try:
         with get_db() as conn:
             conn.execute("""
-                INSERT INTO subscribers (email, followed_team, followed_player, timezone, created_at, active)
-                VALUES (?, ?, ?, ?, datetime('now'), 1)
+                INSERT INTO subscribers (email, followed_team, timezone, created_at, active)
+                VALUES (?, ?, ?, datetime('now'), 1)
                 ON CONFLICT(email) DO UPDATE SET
-                    followed_team   = excluded.followed_team,
-                    followed_player = excluded.followed_player,
-                    timezone        = excluded.timezone,
-                    active          = 1
-            """, (req.email, req.followed_team, req.followed_player, req.timezone))
+                    followed_team = excluded.followed_team,
+                    timezone      = excluded.timezone,
+                    active        = 1
+            """, (req.email, req.followed_team, req.timezone))
         log.info("Subscriber upserted: %s (team=%s)", req.email, req.followed_team)
         return {"status": "subscribed", "email": req.email}
     except Exception as e:
@@ -109,20 +107,6 @@ async def get_teams():
         return {"teams": teams}
     except Exception:
         return {"teams": []}
-
-
-@app.get("/api/teams/{team}/players")
-async def get_players(team: str):
-    try:
-        with get_db() as conn:
-            rows = conn.execute(
-                "SELECT name FROM players WHERE team = ? ORDER BY goals DESC, name ASC",
-                (team,)
-            ).fetchall()
-        players = [r["name"] for r in rows]
-        return {"players": players}
-    except Exception:
-        return {"players": []}
 
 
 @app.get("/health")
