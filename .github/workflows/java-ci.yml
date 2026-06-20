@@ -28,14 +28,14 @@ jobs:
         run: mvn test --no-transfer-progress
 
       - name: Upload JAR artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: worldcup-newsletter-jar
           path: target/worldcup-newsletter-*.jar
           retention-days: 7
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-coverage-report
           path: target/site/jacoco/
