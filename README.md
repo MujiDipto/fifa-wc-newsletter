@@ -13,6 +13,22 @@ Every morning of the tournament, subscribers receive a personalised email about 
 
 ---
 
+## What You Get
+
+Every morning of the tournament, one email built around the team you care about.
+
+**Yesterday's result.** Full match recap with the scoreline and what it means for your team's campaign.
+
+**Where your team stands.** Live group standings with goal difference, points, and what they need to advance.
+
+**What the media is saying.** A second read on the day:  what journalists and pundits are actually writing about your team right now.
+
+**What's coming next.** Fixture preview with kickoff time in your local timezone.
+
+If your team gets knocked out, you'll receive one final send-off email, then your newsletter stops quietly.
+
+---
+
 ## Sign Up
 
 Visit **[http://152.67.100.118](http://152.67.100.118)**, pick your team and timezone, and you're done.
@@ -137,22 +153,6 @@ Deployed to **Oracle Cloud Infrastructure (OCI) Always Free** tier:
 The Java pipeline produces a fat JAR (via `maven-shade-plugin`) containing all dependencies, so the server needs only a JRE to run it.
 
 
-
----
-
-## What You Get
-
-Every morning of the tournament, one email built around the team you care about.
-
-**Yesterday's result.** Full match recap with the scoreline and what it means for your team's campaign.
-
-**Where your team stands.** Live group standings with goal difference, points, and what they need to advance.
-
-**What the media is saying.** A second read on the day:  what journalists and pundits are actually writing about your team right now.
-
-**What's coming next.** Fixture preview with kickoff time in your local timezone.
-
-If your team gets knocked out, you'll receive one final send-off email, then your newsletter stops quietly.
 
 ---
 
