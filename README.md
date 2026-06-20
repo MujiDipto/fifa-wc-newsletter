@@ -24,7 +24,7 @@ If your team gets knocked out, you'll receive one final send-off email — then 
 
 ## Sign Up
 
-Visit the signup page, pick your team and timezone, and you're done.
+Visit **[http://152.67.100.118](http://152.67.100.118)**, pick your team and timezone, and you're done.
 
 No accounts. No app. Just your inbox.
 
