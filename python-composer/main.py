@@ -1,6 +1,5 @@
 import html
 import logging
-import os
 import re
 import sqlite3
 from contextlib import asynccontextmanager
@@ -8,7 +7,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 from typing import Optional

@@ -115,7 +115,6 @@ def _build_standings_table(group_table: list, followed_team: str) -> str:
     if not group_table:
         return ""
 
-    group_name = group_table[0].get("team", "") if group_table else ""
     # Get group letter from first row if available — we don't store it separately
     # Use the bundle's teamUpdate which has "Group X" in it; fall back gracefully
     group_label = "Group Standings"

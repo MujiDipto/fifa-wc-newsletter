@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 def build_prompt(bundle: dict, coverage: list = None) -> str:
