@@ -1,5 +1,7 @@
+import html
 import logging
 import os
+import re
 import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -8,7 +10,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 
 import gemini_client
@@ -21,6 +23,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 DB_PATH = ROOT / "worldcup.db"
+
+_EMAIL_RE = re.compile(r'^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$')
+_EMAIL_MAX = 254
 
 
 def get_db():
@@ -74,11 +79,17 @@ class SubscribeRequest(BaseModel):
     followed_team: Optional[str] = None
     timezone: str = "UTC"
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) > _EMAIL_MAX or not _EMAIL_RE.match(v):
+            raise ValueError("Invalid email address")
+        return v
+
 
 @app.post("/subscribe")
 async def subscribe(req: SubscribeRequest):
-    if not req.email or "@" not in req.email:
-        raise HTTPException(status_code=400, detail="Invalid email address")
     try:
         with get_db() as conn:
             conn.execute("""
@@ -98,16 +109,19 @@ async def subscribe(req: SubscribeRequest):
 
 @app.get("/unsubscribe", response_class=HTMLResponse)
 async def unsubscribe(email: str = Query(...)):
+    if len(email) > _EMAIL_MAX or not _EMAIL_RE.match(email.strip()):
+        raise HTTPException(status_code=400, detail="Invalid email address")
     try:
         with get_db() as conn:
-            conn.execute("UPDATE subscribers SET active = 0 WHERE email = ?", (email,))
+            conn.execute("UPDATE subscribers SET active = 0 WHERE email = ?", (email.strip(),))
         log.info("Unsubscribed: %s", email)
+        safe_email = html.escape(email)
         return HTMLResponse(content=f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Unsubscribed</title>
 <style>body{{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5}}
 .box{{background:#fff;padding:40px;border-radius:8px;text-align:center;max-width:400px}}
 h2{{margin:0 0 12px}}p{{color:#666;margin:0}}</style></head>
-<body><div class="box"><h2>Unsubscribed</h2><p>{email} has been removed from the newsletter.</p></div></body></html>""")
+<body><div class="box"><h2>Unsubscribed</h2><p>{safe_email} has been removed from the newsletter.</p></div></body></html>""")
     except Exception as e:
         log.error("Unsubscribe failed: %s", e)
         raise HTTPException(status_code=500, detail="Failed to unsubscribe")

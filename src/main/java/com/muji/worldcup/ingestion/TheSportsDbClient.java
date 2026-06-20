@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -114,6 +116,6 @@ public class TheSportsDbClient implements DataSource {
     }
 
     private String encode(String value) {
-        return value.replace(" ", "%20");
+        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
     }
 }

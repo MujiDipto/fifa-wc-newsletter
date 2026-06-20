@@ -22,7 +22,10 @@ _TEAM_FLAGS = {
 }
 
 
-def build_html(bundle: dict, sections: dict, base_url: str = "http://152.67.100.118") -> str:
+def build_html(bundle: dict, sections: dict, base_url: str = "") -> str:
+    if not base_url:
+        import os
+        base_url = os.getenv("BASE_URL", "http://localhost:8000")
     subscriber  = bundle.get("subscriber", {})
     email       = subscriber.get("email", "")
     team        = subscriber.get("followedTeam")
