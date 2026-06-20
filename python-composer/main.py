@@ -1,8 +1,11 @@
 import html
 import logging
+import os
 import re
+import smtplib
 import sqlite3
 from contextlib import asynccontextmanager
+from email.mime.text import MIMEText
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -13,6 +16,8 @@ from pydantic import BaseModel, field_validator
 from typing import Optional
 
 import gemini_client
+
+NOTIFY_EMAIL = "muji.dipto@gmail.com"
 
 # Load .env from the repo root (one level up from python-composer/)
 ROOT = Path(__file__).parent.parent
@@ -100,10 +105,39 @@ async def subscribe(req: SubscribeRequest):
                     active        = 1
             """, (req.email, req.followed_team, req.timezone))
         log.info("Subscriber upserted: %s (team=%s)", req.email, req.followed_team)
+        _notify_signup(req.email, req.followed_team, req.timezone)
         return {"status": "subscribed", "email": req.email}
     except Exception as e:
         log.error("Subscribe failed: %s", e)
         raise HTTPException(status_code=500, detail="Failed to save subscription")
+
+
+def _notify_signup(email: str, team: Optional[str], timezone: str) -> None:
+    try:
+        host = os.getenv("SMTP_HOST")
+        port = int(os.getenv("SMTP_PORT", "587"))
+        user = os.getenv("SMTP_USERNAME")
+        password = os.getenv("SMTP_PASSWORD")
+        if not all([host, user, password]):
+            log.warning("SMTP not configured — skipping signup notification")
+            return
+
+        msg = MIMEText(
+            f"New subscriber!\n\nEmail: {email}\nTeam: {team or 'not set'}\nTimezone: {timezone}",
+            "plain"
+        )
+        msg["Subject"] = f"⚽ New WC Newsletter subscriber — {team or 'unknown team'}"
+        msg["From"] = user
+        msg["To"] = NOTIFY_EMAIL
+
+        with smtplib.SMTP(host, port) as smtp:
+            smtp.starttls()
+            smtp.login(user, password)
+            smtp.send_message(msg)
+
+        log.info("Signup notification sent to %s", NOTIFY_EMAIL)
+    except Exception as e:
+        log.warning("Signup notification failed (non-fatal): %s", e)
 
 
 @app.get("/unsubscribe", response_class=HTMLResponse)
