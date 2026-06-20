@@ -8,7 +8,6 @@ def build_prompt(bundle: dict, coverage: list = None) -> str:
     team_update  = bundle.get("teamUpdate")
     next_preview = bundle.get("nextMatchDayPreview")
     status       = bundle.get("eliminationStatus", "ACTIVE")
-    next_match   = bundle.get("nextMatch")
 
     last_result = bundle.get("lastResult")
 
