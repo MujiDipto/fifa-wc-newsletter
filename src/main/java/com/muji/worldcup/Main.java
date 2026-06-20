@@ -21,6 +21,8 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,8 +43,22 @@ public class Main {
         db.initSchema();
         SqliteRepository repository = new SqliteRepository(db);
 
-        List<Subscriber> subscribers = repository.getActiveSubscribers();
-        log.info("Loaded {} subscriber(s) from database", subscribers.size());
+        List<Subscriber> allSubscribers = repository.getActiveSubscribers();
+        log.info("Loaded {} subscriber(s) from database", allSubscribers.size());
+
+        // Only send to subscribers whose local time is currently 9am
+        List<Subscriber> subscribers = allSubscribers.stream()
+                .filter(s -> {
+                    try {
+                        int localHour = LocalTime.now(ZoneId.of(s.timezone())).getHour();
+                        return localHour == 9;
+                    } catch (Exception e) {
+                        log.warn("Invalid timezone '{}' for {}, skipping", s.timezone(), s.email());
+                        return false;
+                    }
+                })
+                .toList();
+        log.info("{} subscriber(s) due for delivery at their local 9am", subscribers.size());
 
         // --- Ingestion ---
         BoundedWorkerPool ingestionPool = new BoundedWorkerPool(4, 16);
