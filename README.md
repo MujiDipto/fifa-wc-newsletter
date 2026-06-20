@@ -1,6 +1,6 @@
 # World Cup 2026 · Daily Newsletter
 
-## AI-powered newsletter pipeline: built from scratch with Java, Python, and deployed to Oracle Cloud.
+### AI-powered newsletter pipeline: built from scratch with Java, Python, and deployed to Oracle Cloud.
 
 Every morning of the tournament, subscribers receive a personalised email about the team they follow: yesterday's result, live group standings, what the media is saying, and what's coming next. Written by an LLM. Delivered without manual intervention.
 
