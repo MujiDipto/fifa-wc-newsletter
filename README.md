@@ -1,5 +1,12 @@
 # World Cup 2026 · Daily Newsletter
 
+![Java CI](https://github.com/MujiDipto/fifa-wc-newsletter/actions/workflows/java-ci.yml/badge.svg)
+![Python CI](https://github.com/MujiDipto/fifa-wc-newsletter/actions/workflows/python-ci.yml/badge.svg)
+![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk)
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Deployed](https://img.shields.io/badge/deployed-Oracle%20Cloud-red?logo=oracle)
+
 ### AI-powered newsletter pipeline: built from scratch with Java, Python, and deployed to Oracle Cloud.
 
 Every morning of the tournament, subscribers receive a personalised email about the team they follow: yesterday's result, live group standings, what the media is saying, and what's coming next. Written by an LLM. Delivered without manual intervention.

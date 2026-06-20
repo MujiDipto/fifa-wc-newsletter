@@ -1,0 +1,42 @@
+name: Python CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'python-composer/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'python-composer/**'
+
+jobs:
+  lint-and-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: python-composer/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd python-composer
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Lint with ruff
+        run: |
+          cd python-composer
+          ruff check .
+
+      - name: Check imports resolve
+        run: |
+          cd python-composer
+          python -c "import main; import gemini_client; import email_builder; import guardian_client; import prompts"
