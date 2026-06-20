@@ -47,4 +47,15 @@ class RetryWithBackoffTest {
         assertThrows(IllegalStateException.class, () ->
                 retry.execute("task", () -> { throw new IllegalStateException("typed"); }));
     }
+
+    @Test
+    void nonRetryableExceptionAbortsImmediately() {
+        AtomicInteger calls = new AtomicInteger();
+        assertThrows(NonRetryableException.class, () ->
+                retry.execute("task", () -> {
+                    calls.incrementAndGet();
+                    throw new NonRetryableException("stop now");
+                }));
+        assertEquals(1, calls.get());
+    }
 }

@@ -33,3 +33,10 @@ jobs:
           name: worldcup-newsletter-jar
           path: target/worldcup-newsletter-*.jar
           retention-days: 7
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: target/site/jacoco/
+          retention-days: 7
