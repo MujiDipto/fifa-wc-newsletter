@@ -2,6 +2,7 @@
 .claude/
 project-requirements.md
 target/
+dependency-reduced-pom.xml
 *.db
 *.sqlite
 *.class
