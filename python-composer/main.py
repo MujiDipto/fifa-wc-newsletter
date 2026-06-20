@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -94,6 +94,23 @@ async def subscribe(req: SubscribeRequest):
     except Exception as e:
         log.error("Subscribe failed: %s", e)
         raise HTTPException(status_code=500, detail="Failed to save subscription")
+
+
+@app.get("/unsubscribe", response_class=HTMLResponse)
+async def unsubscribe(email: str = Query(...)):
+    try:
+        with get_db() as conn:
+            conn.execute("UPDATE subscribers SET active = 0 WHERE email = ?", (email,))
+        log.info("Unsubscribed: %s", email)
+        return HTMLResponse(content=f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Unsubscribed</title>
+<style>body{{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5}}
+.box{{background:#fff;padding:40px;border-radius:8px;text-align:center;max-width:400px}}
+h2{{margin:0 0 12px}}p{{color:#666;margin:0}}</style></head>
+<body><div class="box"><h2>Unsubscribed</h2><p>{email} has been removed from the newsletter.</p></div></body></html>""")
+    except Exception as e:
+        log.error("Unsubscribe failed: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to unsubscribe")
 
 
 @app.get("/api/teams")

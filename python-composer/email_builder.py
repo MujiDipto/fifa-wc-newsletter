@@ -22,8 +22,9 @@ _TEAM_FLAGS = {
 }
 
 
-def build_html(bundle: dict, sections: dict) -> str:
+def build_html(bundle: dict, sections: dict, base_url: str = "http://152.67.100.118") -> str:
     subscriber  = bundle.get("subscriber", {})
+    email       = subscriber.get("email", "")
     team        = subscriber.get("followedTeam")
     timezone    = subscriber.get("timezone", "UTC")
     group_table = bundle.get("groupTable", [])
@@ -96,6 +97,7 @@ def build_html(bundle: dict, sections: dict) -> str:
   <tr>
     <td style="padding:28px 32px;border-top:1px solid #eee;margin-top:8px">
       <p style="margin:0;font-size:12px;color:#aaa">World Cup Desk &nbsp;&middot;&nbsp; &#x270D;&#xFE0F; Muji (&amp; Claude)</p>
+      <p style="margin:8px 0 0 0;font-size:11px;color:#ccc"><a href="{base_url}/unsubscribe?email={email}" style="color:#ccc">Unsubscribe</a></p>
     </td>
   </tr>
 
