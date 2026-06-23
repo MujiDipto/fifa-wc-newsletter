@@ -331,6 +331,28 @@ public class SqliteRepository {
         return results;
     }
 
+    public List<com.muji.worldcup.model.Subscriber> getTestSubscribers() throws SQLException {
+        String sql = """
+            SELECT email, followed_team, timezone
+            FROM subscribers
+            WHERE is_test = 1 AND active = 1
+            ORDER BY created_at ASC
+            """;
+        List<com.muji.worldcup.model.Subscriber> results = new ArrayList<>();
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    results.add(new com.muji.worldcup.model.Subscriber(
+                            rs.getString("email"),
+                            rs.getString("followed_team"),
+                            rs.getString("timezone")
+                    ));
+                }
+            }
+        }
+        return results;
+    }
+
     public List<String> getDistinctTeams() throws SQLException {
         String sql = "SELECT DISTINCT team_name FROM group_standings ORDER BY team_name ASC";
         List<String> teams = new ArrayList<>();

@@ -37,28 +37,41 @@ public class Main {
     private static final String COMPOSER_URL = "http://localhost:8000";
 
     public static void main(String[] args) throws Exception {
+        boolean testMode = List.of(args).contains("--test");
+
         EnvLoader.load(Path.of(".env"));
 
         Database db = new Database("worldcup.db");
         db.initSchema();
         SqliteRepository repository = new SqliteRepository(db);
 
-        List<Subscriber> allSubscribers = repository.getActiveSubscribers();
-        log.info("Loaded {} subscriber(s) from database", allSubscribers.size());
+        List<Subscriber> subscribers;
+        if (testMode) {
+            subscribers = repository.getTestSubscribers();
+            log.info("[TEST MODE] Loaded {} test subscriber(s) — timezone filter bypassed", subscribers.size());
+            if (subscribers.isEmpty()) {
+                log.warn("[TEST MODE] No test subscribers found. " +
+                         "Mark one with: UPDATE subscribers SET is_test=1 WHERE email='you@example.com';");
+                return;
+            }
+        } else {
+            List<Subscriber> allSubscribers = repository.getActiveSubscribers();
+            log.info("Loaded {} subscriber(s) from database", allSubscribers.size());
 
-        // Only send to subscribers whose local time is currently 9am
-        List<Subscriber> subscribers = allSubscribers.stream()
-                .filter(s -> {
-                    try {
-                        int localHour = LocalTime.now(ZoneId.of(s.timezone())).getHour();
-                        return localHour == 9;
-                    } catch (Exception e) {
-                        log.warn("Invalid timezone '{}' for {}, skipping", s.timezone(), s.email());
-                        return false;
-                    }
-                })
-                .toList();
-        log.info("{} subscriber(s) due for delivery at their local 9am", subscribers.size());
+            // Only send to subscribers whose local time is currently 9am
+            subscribers = allSubscribers.stream()
+                    .filter(s -> {
+                        try {
+                            int localHour = LocalTime.now(ZoneId.of(s.timezone())).getHour();
+                            return localHour == 9;
+                        } catch (Exception e) {
+                            log.warn("Invalid timezone '{}' for {}, skipping", s.timezone(), s.email());
+                            return false;
+                        }
+                    })
+                    .toList();
+            log.info("{} subscriber(s) due for delivery at their local 9am", subscribers.size());
+        }
 
         // --- Ingestion ---
         BoundedWorkerPool ingestionPool = new BoundedWorkerPool(4, 16);

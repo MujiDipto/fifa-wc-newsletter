@@ -107,6 +107,7 @@ public class Database {
             tryAddColumn(stmt, "players", "position", "TEXT");
             tryAddColumn(stmt, "players", "nationality", "TEXT");
             tryAddColumn(stmt, "players", "bio", "TEXT");
+            tryAddColumn(stmt, "subscribers", "is_test", "INTEGER NOT NULL DEFAULT 0");
 
             log.info("SQLite schema initialised at {}", jdbcUrl);
         }
