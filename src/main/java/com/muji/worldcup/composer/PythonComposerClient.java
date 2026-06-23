@@ -102,6 +102,9 @@ public class PythonComposerClient {
         node.put("teamUpdate",          bundle.teamUpdate());
         node.put("nextMatchDayPreview", bundle.nextMatchDayPreview());
         node.put("eliminationStatus",   bundle.eliminationStatus().name());
+        node.put("tournamentStage",     bundle.tournamentStage());
+        node.put("stageLabel",          bundle.stageLabel());
+        node.put("isKnockoutStage",     bundle.isKnockoutStage());
 
         // Full group standings table
         var tableArr = node.putArray("groupTable");

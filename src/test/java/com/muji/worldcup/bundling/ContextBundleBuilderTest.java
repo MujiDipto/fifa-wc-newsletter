@@ -58,7 +58,7 @@ class ContextBundleBuilderTest {
     void matchRecapShowsFinishedMatch() throws SQLException {
         repo.upsertMatches(List.of(new Match(
                 "1", "Argentina", "France", 2, 1,
-                "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src")));
+                "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src", null)));
 
         Subscriber sub = new Subscriber("a@example.com", "Argentina");
         ContextBundle bundle = builder.build(sub);
@@ -78,7 +78,7 @@ class ContextBundleBuilderTest {
     void nextMatchPreviewShowsUpcomingFixture() throws SQLException {
         repo.upsertMatches(List.of(new Match(
                 "99", "Argentina", "Brazil", null, null,
-                "TIMED", "Group J", Instant.now().plusSeconds(7200), "src")));
+                "TIMED", "Group J", Instant.now().plusSeconds(7200), "src", null)));
 
         Subscriber sub = new Subscriber("a@example.com", "Argentina");
         ContextBundle bundle = builder.build(sub);
@@ -98,7 +98,7 @@ class ContextBundleBuilderTest {
     void eliminationStatusIsJustEliminatedOnFirstDetection() throws SQLException {
         repo.upsertMatches(List.of(new Match(
                 "1", "Argentina", "France", 2, 1,
-                "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src")));
+                "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src", null)));
 
         Subscriber sub = new Subscriber("a@example.com", "Argentina");
         ContextBundle bundle = builder.build(sub);
@@ -109,7 +109,7 @@ class ContextBundleBuilderTest {
     void eliminationStatusIsAlreadyHandledOnSecondRun() throws SQLException {
         repo.upsertMatches(List.of(new Match(
                 "1", "Argentina", "France", 2, 1,
-                "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src")));
+                "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src", null)));
 
         Subscriber sub = new Subscriber("a@example.com", "Argentina");
         builder.build(sub);
@@ -121,9 +121,9 @@ class ContextBundleBuilderTest {
     void eliminationStatusIsActiveWhenUpcomingMatchExists() throws SQLException {
         repo.upsertMatches(List.of(
                 new Match("1", "Argentina", "France", 2, 1,
-                        "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src"),
+                        "FINISHED", "Group J", Instant.now().minusSeconds(3600), "src", null),
                 new Match("2", "Argentina", "Brazil", null, null,
-                        "SCHEDULED", "Group J", Instant.now().plusSeconds(7200), "src")));
+                        "SCHEDULED", "Group J", Instant.now().plusSeconds(7200), "src", null)));
 
         Subscriber sub = new Subscriber("a@example.com", "Argentina");
         ContextBundle bundle = builder.build(sub);

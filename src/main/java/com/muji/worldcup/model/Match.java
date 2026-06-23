@@ -11,5 +11,10 @@ public record Match(
         String status,
         String group,
         Instant kickoffTime,
-        String source
-) {}
+        String source,
+        String stage
+) {
+    public boolean isKnockout() {
+        return stage != null && !stage.equals("GROUP_STAGE");
+    }
+}

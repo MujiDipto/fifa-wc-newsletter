@@ -30,7 +30,7 @@ class SqliteRepositoryTest {
     @Test
     void upsertAndFindMatchByTeam() throws SQLException {
         Match m = new Match("1", "Argentina", "France", 2, 1,
-                "FINISHED", "Group J", Instant.parse("2026-06-18T18:00:00Z"), "football-data.org");
+                "FINISHED", "Group J", Instant.parse("2026-06-18T18:00:00Z"), "football-data.org", null);
         repo.upsertMatches(List.of(m));
 
         List<Match> found = repo.findMatchesByTeam("Argentina");
@@ -42,7 +42,7 @@ class SqliteRepositoryTest {
     @Test
     void upsertMatchIsIdempotent() throws SQLException {
         Match m = new Match("1", "Brazil", "Germany", 1, 0,
-                "FINISHED", "Group A", Instant.now(), "football-data.org");
+                "FINISHED", "Group A", Instant.now(), "football-data.org", null);
         repo.upsertMatches(List.of(m));
         repo.upsertMatches(List.of(m)); // second upsert
 
@@ -52,11 +52,11 @@ class SqliteRepositoryTest {
     @Test
     void upsertUpdatesScoreOnConflict() throws SQLException {
         Match initial = new Match("42", "Spain", "Italy", null, null,
-                "TIMED", "Group H", Instant.now(), "football-data.org");
+                "TIMED", "Group H", Instant.now(), "football-data.org", null);
         repo.upsertMatches(List.of(initial));
 
         Match updated = new Match("42", "Spain", "Italy", 3, 1,
-                "FINISHED", "Group H", Instant.now(), "football-data.org");
+                "FINISHED", "Group H", Instant.now(), "football-data.org", null);
         repo.upsertMatches(List.of(updated));
 
         List<Match> found = repo.findMatchesByTeam("Spain");
@@ -66,9 +66,9 @@ class SqliteRepositoryTest {
     @Test
     void findUpcomingMatchesReturnsScheduledOnly() throws SQLException {
         repo.upsertMatches(List.of(
-                new Match("1", "A", "B", null, null, "TIMED",     "G1", Instant.now().plusSeconds(3600), "src"),
-                new Match("2", "C", "D", 1,    0,    "FINISHED",  "G1", Instant.now().minusSeconds(3600), "src"),
-                new Match("3", "E", "F", null, null, "SCHEDULED", "G2", Instant.now().plusSeconds(7200), "src")
+                new Match("1", "A", "B", null, null, "TIMED",     "G1", Instant.now().plusSeconds(3600), "src", null),
+                new Match("2", "C", "D", 1,    0,    "FINISHED",  "G1", Instant.now().minusSeconds(3600), "src", null),
+                new Match("3", "E", "F", null, null, "SCHEDULED", "G2", Instant.now().plusSeconds(7200), "src", null)
         ));
         List<Match> upcoming = repo.findUpcomingMatches();
         assertEquals(2, upcoming.size());

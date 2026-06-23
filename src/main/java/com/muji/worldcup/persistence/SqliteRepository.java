@@ -31,12 +31,15 @@ public class SqliteRepository {
     public void upsertMatches(List<Match> matches) throws SQLException {
         String sql = """
             INSERT INTO matches (id, home_team, away_team, home_score, away_score,
-                status, group_name, kickoff_time, source, fetched_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                status, group_name, kickoff_time, source, stage, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
+                home_team    = excluded.home_team,
+                away_team    = excluded.away_team,
                 home_score   = excluded.home_score,
                 away_score   = excluded.away_score,
                 status       = excluded.status,
+                stage        = excluded.stage,
                 fetched_at   = excluded.fetched_at
             """;
         try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -51,7 +54,8 @@ public class SqliteRepository {
                 ps.setString(7, m.group());
                 ps.setString(8, m.kickoffTime() != null ? m.kickoffTime().toString() : null);
                 ps.setString(9, m.source());
-                ps.setString(10, now);
+                ps.setString(10, m.stage());
+                ps.setString(11, now);
                 ps.addBatch();
             }
             int[] counts = ps.executeBatch();
@@ -62,7 +66,7 @@ public class SqliteRepository {
     public List<Match> findMatchesByTeam(String teamName) throws SQLException {
         String sql = """
             SELECT id, home_team, away_team, home_score, away_score,
-                   status, group_name, kickoff_time, source
+                   status, group_name, kickoff_time, source, stage
             FROM matches
             WHERE home_team = ? OR away_team = ?
             ORDER BY kickoff_time DESC
@@ -81,7 +85,7 @@ public class SqliteRepository {
     public List<Match> findUpcomingMatches() throws SQLException {
         String sql = """
             SELECT id, home_team, away_team, home_score, away_score,
-                   status, group_name, kickoff_time, source
+                   status, group_name, kickoff_time, source, stage
             FROM matches
             WHERE status = 'SCHEDULED' OR status = 'TIMED'
             ORDER BY kickoff_time ASC
@@ -96,6 +100,21 @@ public class SqliteRepository {
         return results;
     }
 
+    public String getCurrentStage() throws SQLException {
+        // Returns the stage of the most recently played match
+        String sql = """
+            SELECT stage FROM matches
+            WHERE status = 'FINISHED' AND stage IS NOT NULL
+            ORDER BY kickoff_time DESC
+            LIMIT 1
+            """;
+        try (Connection conn = db.connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("stage") : "GROUP_STAGE";
+            }
+        }
+    }
+
     private Match matchFromRs(ResultSet rs) throws SQLException {
         String kickoff = rs.getString("kickoff_time");
         return new Match(
@@ -107,7 +126,8 @@ public class SqliteRepository {
                 rs.getString("status"),
                 rs.getString("group_name"),
                 kickoff != null ? Instant.parse(kickoff) : null,
-                rs.getString("source")
+                rs.getString("source"),
+                rs.getString("stage")
         );
     }
 

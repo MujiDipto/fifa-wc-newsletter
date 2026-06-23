@@ -39,6 +39,7 @@ public class Database {
                     fetched_at  TEXT NOT NULL
                 )
                 """);
+            tryAddColumn(stmt, "matches", "stage", "TEXT");
 
             stmt.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS group_standings (

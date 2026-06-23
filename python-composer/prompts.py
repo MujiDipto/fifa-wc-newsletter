@@ -2,12 +2,14 @@ from datetime import datetime
 
 
 def build_prompt(bundle: dict, coverage: list = None) -> str:
-    subscriber   = bundle.get("subscriber", {})
-    team         = subscriber.get("followedTeam")
-    recap        = bundle.get("matchDayRecapText")
-    team_update  = bundle.get("teamUpdate")
-    next_preview = bundle.get("nextMatchDayPreview")
-    status       = bundle.get("eliminationStatus", "ACTIVE")
+    subscriber    = bundle.get("subscriber", {})
+    team          = subscriber.get("followedTeam")
+    recap         = bundle.get("matchDayRecapText")
+    team_update   = bundle.get("teamUpdate")
+    next_preview  = bundle.get("nextMatchDayPreview")
+    status        = bundle.get("eliminationStatus", "ACTIVE")
+    is_knockout   = bundle.get("isKnockoutStage", False)
+    stage_label   = bundle.get("stageLabel", "Group Stage")
 
     last_result = bundle.get("lastResult")
 
@@ -27,7 +29,12 @@ def build_prompt(bundle: dict, coverage: list = None) -> str:
     if next_preview:
         sections.append(f"NEXT FIXTURE:\n{next_preview}")
 
-    context_block = "\n\n".join(sections) if sections else "No match data available."
+    if is_knockout and team_update:
+        sections_with_label = [f"TOURNAMENT STAGE: {stage_label}"] + sections
+    else:
+        sections_with_label = sections
+
+    context_block = "\n\n".join(sections_with_label) if sections_with_label else "No match data available."
 
     coverage_block = ""
     if coverage:
@@ -45,6 +52,25 @@ def build_prompt(bundle: dict, coverage: list = None) -> str:
         elimination_note = f"\nNOTE: {team} is eliminated. Omit the ANALYSIS section entirely.\n"
 
     following_line = f"team: {team}" if team else "the World Cup"
+
+    if is_knockout:
+        analysis_instruction = f"""<Exactly two paragraphs, separated by a blank line.
+
+Paragraph 1: The knockout stakes — what happened in the last match (if any), what winning or losing means at the {stage_label} stage, and where {team} stands in the bracket. Factual, analytical. Only use information from DATA above.
+
+Paragraph 2: The conversation — draw on the MEDIA COVERAGE section to reflect what journalists and pundits are talking about. The articles may cover the broader World Cup rather than {team} specifically. Use them to situate {team} inside the wider tournament narrative: what themes are dominating coverage right now, what the football world is reacting to, what the mood of the tournament is. Pull in anything directly relevant to {team} where it exists. Make this paragraph feel alive and opinionated — like reading a quality sports column, not a summary.
+
+No bullet points. No markdown. No headers within the section.>"""
+        next_match_instruction = f"<One concise paragraph about the upcoming {stage_label} fixture. Name the opponent and what elimination at this stage would mean for both sides. If no fixture data is available write: No fixture data available.>"
+    else:
+        analysis_instruction = f"""<Exactly two paragraphs, separated by a blank line.
+
+Paragraph 1: The football — what happened on the pitch, what the result means, where the team stands. Factual, analytical. Only use information from DATA above.
+
+Paragraph 2: The conversation — draw on the MEDIA COVERAGE section to reflect what journalists and pundits are talking about. The articles may cover the broader World Cup rather than {team} specifically. Use them to situate {team} inside the wider tournament narrative: what themes are dominating coverage right now, what the football world is reacting to, what the mood of the tournament is. Pull in anything directly relevant to {team} where it exists. Make this paragraph feel alive and opinionated — like reading a quality sports column, not a summary.
+
+No bullet points. No markdown. No headers within the section.>"""
+        next_match_instruction = "<One concise paragraph about the upcoming fixture. Name the opponent, note their group position and what the match means for both sides. If no fixture data is available write: No fixture data available.>"
 
     return f"""You are writing a daily World Cup 2026 newsletter for a reader following {following_line}.
 
@@ -65,16 +91,10 @@ OPENING:
 <One sharp sentence (max 20 words) that captures the day's story for this subscriber. If no match was played, open on what the rest day means for the team's position or what to watch next.>
 
 ANALYSIS:
-<Exactly two paragraphs, separated by a blank line.
-
-Paragraph 1: The football — what happened on the pitch, what the result means, where the team stands. Factual, analytical. Only use information from DATA above.
-
-Paragraph 2: The conversation — draw on the MEDIA COVERAGE section to reflect what journalists and pundits are talking about. The articles may cover the broader World Cup rather than {team} specifically. Use them to situate {team} inside the wider tournament narrative: what themes are dominating coverage right now, what the football world is reacting to, what the mood of the tournament is. Pull in anything directly relevant to {team} where it exists. Make this paragraph feel alive and opinionated — like reading a quality sports column, not a summary.
-
-No bullet points. No markdown. No headers within the section.>
+{analysis_instruction}
 
 NEXT_MATCH:
-<One concise paragraph about the upcoming fixture. Name the opponent, note their group position and what the match means for both sides. If no fixture data is available write: No fixture data available.>
+{next_match_instruction}
 """
 
 

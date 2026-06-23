@@ -32,6 +32,8 @@ def build_html(bundle: dict, sections: dict, base_url: str = "") -> str:
     timezone    = subscriber.get("timezone", "UTC")
     group_table = bundle.get("groupTable", [])
     next_match  = bundle.get("nextMatch")
+    is_knockout = bundle.get("isKnockoutStage", False)
+    stage_label = bundle.get("stageLabel", "Group Stage")
 
     opening   = sections.get("opening", "")
     analysis  = sections.get("analysis", "")
@@ -67,7 +69,7 @@ def build_html(bundle: dict, sections: dict, base_url: str = "") -> str:
   <!-- Header bar -->
   <tr>
     <td style="background:#111;padding:24px 32px">
-      <div style="color:#888;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">World Cup 2026 · Daily</div>
+      <div style="color:#888;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">World Cup 2026 · Daily{"&nbsp;&nbsp;·&nbsp;&nbsp;" + stage_label if is_knockout else ""}</div>
       <div style="color:#ffffff;font-size:22px;font-weight:600">{header_label}</div>
     </td>
   </tr>

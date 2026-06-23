@@ -76,16 +76,19 @@ public class FootballDataClient implements DataSource {
     }
 
     private Match parseMatch(JsonNode m) {
+        String homeTeam = m.path("homeTeam").path("name").asText(null);
+        String awayTeam = m.path("awayTeam").path("name").asText(null);
         return new Match(
                 m.path("id").asText(),
-                m.path("homeTeam").path("name").asText(),
-                m.path("awayTeam").path("name").asText(),
+                homeTeam != null ? homeTeam : "TBD",
+                awayTeam != null ? awayTeam : "TBD",
                 scoreOrNull(m, "home"),
                 scoreOrNull(m, "away"),
                 m.path("status").asText(),
                 m.path("group").asText(null),
                 Instant.parse(m.path("utcDate").asText()),
-                SOURCE
+                SOURCE,
+                m.path("stage").asText(null)
         );
     }
 
